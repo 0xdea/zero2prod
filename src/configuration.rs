@@ -4,7 +4,7 @@ use config::{Config, File, FileFormat};
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
-    pub web_port: u16,
+    pub app_port: u16,
 }
 
 /// Database settings
@@ -12,8 +12,8 @@ pub struct Settings {
 pub struct DatabaseSettings {
     pub username: String,
     pub password: String,
-    pub db_port: u16,
     pub db_host: String,
+    pub db_port: u16,
     pub db_name: String,
 }
 

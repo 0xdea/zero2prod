@@ -32,7 +32,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     let address = spawn_app();
     let config = get_config().expect("Failed to read configuration");
     let connection_string = config.database.connection_string();
-    let mut connection = PgConnection::connect(&connection_string)
+    let mut conn = PgConnection::connect(&connection_string)
         .await
         .expect("Failed to connect to the database");
     let client = reqwest::Client::new();
@@ -49,7 +49,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     assert_eq!(200, response.status());
 
     let saved = sqlx::query!("SELECT email, name FROM subscriptions")
-        .fetch_one(&mut connection)
+        .fetch_one(&mut conn)
         .await
         .expect("Failed to fetch saved subscription");
 
