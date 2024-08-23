@@ -1,5 +1,5 @@
 use std::net::TcpListener;
-use zero2prod::run;
+use zero2prod::startup::run;
 
 /// Spin up an instance of our application and return its address (i.e. http://localhost:XXXX)
 fn spawn_app() -> String {
@@ -52,7 +52,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
         ("", "missing both name and email"),
     ];
 
-    for (body, error_message) in test_cases {
+    for (body, _error_message) in test_cases {
         let response = client
             .post(format!("{address}/subscriptions"))
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -64,7 +64,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
         assert_eq!(
             400,
             response.status(),
-            "The API did not fail with 400 Bad Request when the payload was {error_message}"
+            "The API did not fail with 400 Bad Request when the payload was {_error_message}"
         )
     }
 }
