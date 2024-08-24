@@ -1,17 +1,17 @@
 use zero2prod::startup::run;
 
-use sqlx::{PgPool, Pool, Postgres};
+use sqlx::PgPool;
 use std::net::TcpListener;
 
-/// Test application instance data
+/// Test instance's data
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
 }
 
 /// Spin up a test instance and return its data
-async fn spawn_app(db_pool: Pool<Postgres>) -> TestApp {
-    // Open a TCP listener for the web appplication
+async fn spawn_app(db_pool: PgPool) -> TestApp {
+    // Open a TCP listener for the web application
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
@@ -25,7 +25,7 @@ async fn spawn_app(db_pool: Pool<Postgres>) -> TestApp {
 }
 
 #[sqlx::test]
-async fn health_check_works(db_pool: Pool<Postgres>) {
+async fn health_check_works(db_pool: PgPool) {
     let app = spawn_app(db_pool).await;
     let client = reqwest::Client::new();
 
@@ -40,7 +40,7 @@ async fn health_check_works(db_pool: Pool<Postgres>) {
 }
 
 #[sqlx::test]
-async fn subscribe_returns_a_200_for_valid_form_data(db_pool: Pool<Postgres>) {
+async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
     let app = spawn_app(db_pool).await;
     let client = reqwest::Client::new();
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
@@ -65,7 +65,7 @@ async fn subscribe_returns_a_200_for_valid_form_data(db_pool: Pool<Postgres>) {
 }
 
 #[sqlx::test]
-async fn subscribe_returns_a_400_when_data_is_missing(db_pool: Pool<Postgres>) {
+async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
     let app = spawn_app(db_pool).await;
     let client = reqwest::Client::new();
     let test_cases = vec![
