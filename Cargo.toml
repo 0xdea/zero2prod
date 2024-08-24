@@ -21,6 +21,7 @@ chrono = "0.4"
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
 
 [dependencies.sqlx]
 version = "0.8"
