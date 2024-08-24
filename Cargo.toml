@@ -1,7 +1,14 @@
 [package]
 name = "zero2prod"
 version = "0.1.0"
+authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>", "Luca Palmieri <rust@lpalmieri.com"]
 edition = "2021"
+description = "My code for \"Zero To Production In Rust\", a book by Luca Palmieri on API development using Rust."
+homepage = "https://www.zero2prod.com/"
+repository = "https://github.com/0xdea/zero2prod"
+license = "MIT"
+keywords = ["tutorial", "api", "web", "email"]
+categories = ["web-programming", "email"]
 
 [dependencies]
 actix-web = "4"

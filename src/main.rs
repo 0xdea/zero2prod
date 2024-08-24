@@ -1,3 +1,12 @@
+// TODO: remove temporary annoying clippy lints
+#![warn(
+    clippy::all,
+    //clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+)]
+
 use zero2prod::configuration::get_config;
 use zero2prod::startup::run;
 
