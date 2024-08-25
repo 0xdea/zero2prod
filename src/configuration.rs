@@ -27,7 +27,7 @@ pub fn get_config() -> Result<Settings, config::ConfigError> {
 
 impl DatabaseSettings {
     /// Generate connection string from database settings
-    pub fn connection_string(&self) -> String {
+    pub fn database_url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.db_host, self.db_port, self.db_name

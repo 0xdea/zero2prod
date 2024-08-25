@@ -1,8 +1,9 @@
-use zero2prod::startup::run;
-
-use sqlx::PgPool;
 use std::net::TcpListener;
 use std::sync::LazyLock;
+
+use sqlx::PgPool;
+
+use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 /// Ensure the tracing stack is initialized only once
@@ -10,15 +11,21 @@ static TRACING: LazyLock<()> = LazyLock::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
     if std::env::var("TEST_LOG").is_ok() {
-        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
-        init_subscriber(subscriber);
+        init_subscriber(get_subscriber(
+            subscriber_name,
+            default_filter_level,
+            std::io::stderr,
+        ));
     } else {
-        let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::sink);
-        init_subscriber(subscriber);
+        init_subscriber(get_subscriber(
+            subscriber_name,
+            default_filter_level,
+            std::io::sink,
+        ));
     };
 });
 
-/// Test instance's data
+/// Test instance data
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,

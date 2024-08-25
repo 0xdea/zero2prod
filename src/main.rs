@@ -7,12 +7,13 @@
     clippy::cargo,
 )]
 
+use std::net::TcpListener;
+
+use sqlx::PgPool;
+
 use zero2prod::configuration::get_config;
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
-
-use sqlx::PgPool;
-use std::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -24,7 +25,7 @@ async fn main() -> std::io::Result<()> {
     let config = get_config().expect("Failed to read configuration");
 
     // Connect to the database
-    let db_pool = PgPool::connect(&config.database.connection_string())
+    let db_pool = PgPool::connect(&config.database.database_url())
         .await
         .expect("Failed to connect to the database");
 
