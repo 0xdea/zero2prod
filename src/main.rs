@@ -9,6 +9,7 @@
 
 use std::net::TcpListener;
 
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
 use zero2prod::configuration::get_config;
@@ -25,7 +26,7 @@ async fn main() -> std::io::Result<()> {
     let config = get_config().expect("Failed to read configuration");
 
     // Connect to the database
-    let db_pool = PgPool::connect(&config.database.database_url())
+    let db_pool = PgPool::connect(&config.database.database_url().expose_secret())
         .await
         .expect("Failed to connect to the database");
 
