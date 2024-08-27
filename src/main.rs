@@ -7,8 +7,6 @@
     clippy::cargo,
 )]
 
-use std::net::TcpListener;
-
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 
@@ -30,7 +28,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to connect to the database");
 
     run(
-        TcpListener::bind(format!(
+        std::net::TcpListener::bind(format!(
             "{}:{}",
             config.application.app_host, config.application.app_port
         ))?,

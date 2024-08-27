@@ -1,13 +1,10 @@
-use std::net::TcpListener;
-use std::sync::LazyLock;
-
 use sqlx::PgPool;
 
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 /// Ensure the tracing stack is initialized only once
-static TRACING: LazyLock<()> = LazyLock::new(|| {
+static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
     if std::env::var("TEST_LOG").is_ok() {
@@ -34,10 +31,10 @@ pub struct TestApp {
 /// Spin up a test instance and return its data
 async fn spawn_app(db_pool: PgPool) -> TestApp {
     // Initialize logging
-    LazyLock::force(&TRACING);
+    std::sync::LazyLock::force(&TRACING);
 
     // Open a TCP listener for the web application
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
