@@ -32,3 +32,11 @@ features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "mig
 
 [dev-dependencies]
 reqwest = "0.12"
+
+[profile.release]
+# see https://github.com/johnthagen/min-sized-rust
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
