@@ -20,6 +20,9 @@ pub struct FormData {
     )
 )]
 pub async fn subscribe(form: web::Form<FormData>, db_pool: web::Data<PgPool>) -> HttpResponse {
+    if !is_valid_name(&form.name) {
+        return HttpResponse::BadRequest().finish();
+    }
     insert_subscriber(&form, &db_pool).await.map_or_else(
         |_| HttpResponse::InternalServerError().finish(),
         |_| HttpResponse::Ok().finish(),
@@ -46,4 +49,15 @@ pub async fn insert_subscriber(form: &FormData, db_pool: &PgPool) -> Result<(), 
         e
     })?;
     Ok(())
+}
+
+/// Validate name
+pub fn is_valid_name(name: &str) -> bool {
+    let is_empty = name.trim().is_empty();
+    let is_too_long = name.chars().count() > 256;
+    // TODO: it would be better to use a whitelist approach instead
+    let blacklisted_chars = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
+    let contains_blacklisted_chars = name.chars().any(|c| blacklisted_chars.contains(&c));
+
+    !(is_empty || is_too_long || contains_blacklisted_chars)
 }
