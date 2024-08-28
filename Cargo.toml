@@ -1,6 +1,6 @@
 [package]
 name = "zero2prod"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>", "Luca Palmieri <rust@lpalmieri.com"]
 edition = "2021"
 description = "My code for \"Zero To Production In Rust\", a book by Luca Palmieri on API development using Rust."

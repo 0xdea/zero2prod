@@ -1,5 +1,8 @@
 use config::{Config, ConfigError, Environment, File};
 use secrecy::{ExposeSecret, Secret};
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use sqlx::ConnectOptions;
+use tracing::log::LevelFilter;
 
 /// Settings
 #[derive(serde::Deserialize)]
@@ -20,9 +23,42 @@ pub struct ApplicationSettings {
 pub struct DatabaseSettings {
     pub username: String,
     pub password: Secret<String>,
-    pub db_host: String,
-    pub db_port: u16,
-    pub db_name: String,
+    pub host: String,
+    pub port: u16,
+    pub database: String,
+    pub require_ssl: bool,
+}
+
+impl DatabaseSettings {
+    /// Generate connection string from database settings (does not support SSL mode)
+    #[deprecated(since = "0.1.1", note = "use `db_options` instead")]
+    pub fn db_url(&self) -> Secret<String> {
+        Secret::new(format!(
+            "postgres://{}:{}@{}:{}/{}",
+            self.username,
+            self.password.expose_secret(),
+            self.host,
+            self.port,
+            self.database
+        ))
+    }
+
+    /// Generate options and flags that can be used to configure a database connection
+    pub fn db_options(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require
+        } else {
+            PgSslMode::Prefer
+        };
+        PgConnectOptions::new()
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .host(&self.host)
+            .port(self.port)
+            .database(&self.database)
+            .ssl_mode(ssl_mode)
+            .log_statements(LevelFilter::Trace)
+    }
 }
 
 /// Possible runtime environments
@@ -77,18 +113,4 @@ pub fn get_config() -> Result<Settings, ConfigError> {
         .add_source(Environment::with_prefix("zero2prod").separator("__"))
         .build()?
         .try_deserialize()
-}
-
-impl DatabaseSettings {
-    /// Generate connection string from database settings
-    pub fn database_url(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.expose_secret(),
-            self.db_host,
-            self.db_port,
-            self.db_name
-        ))
-    }
 }

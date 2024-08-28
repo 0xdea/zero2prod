@@ -7,7 +7,6 @@
     clippy::cargo,
 )]
 
-use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
 use zero2prod::configuration::get_config;
 use zero2prod::startup::run;
@@ -25,8 +24,7 @@ async fn main() -> std::io::Result<()> {
     // Connect to the database
     let db_pool = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(2))
-        .connect_lazy(config.database.database_url().expose_secret())
-        .expect("Failed to connect to the database");
+        .connect_lazy_with(config.database.db_options());
 
     run(
         std::net::TcpListener::bind(format!(
