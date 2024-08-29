@@ -2,11 +2,7 @@
 // TODO: it would be better to use a whitelist approach instead
 const NAME_BLACKLIST: [char; 9] = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
-pub struct NewSubscriber {
-    pub email: String,
-    pub name: SubscriberName,
-}
-
+/// Subscriber name
 #[derive(Debug)]
 pub struct SubscriberName(String);
 
@@ -33,7 +29,7 @@ impl AsRef<str> for SubscriberName {
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::{SubscriberName, NAME_BLACKLIST};
+    use super::{SubscriberName, NAME_BLACKLIST};
     use claim::{assert_err, assert_ok};
 
     #[test]
