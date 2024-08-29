@@ -29,7 +29,7 @@ impl AsRef<str> for SubscriberName {
 
 #[cfg(test)]
 mod tests {
-    use super::{SubscriberName, NAME_BLACKLIST};
+    use super::*;
     use claim::{assert_err, assert_ok};
 
     #[test]

@@ -34,6 +34,10 @@ features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "mig
 [dev-dependencies]
 reqwest = "0.12"
 claim = "0.5"
+rand = "0.8"
+fake = "2.9"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
 
 [profile.release]
 # see https://github.com/johnthagen/min-sized-rust
