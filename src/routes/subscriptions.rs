@@ -1,9 +1,8 @@
+use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
-
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 
 /// Web form data
 #[derive(serde::Deserialize)]
