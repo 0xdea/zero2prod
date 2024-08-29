@@ -1,5 +1,6 @@
 use sqlx::PgPool;
-
+use zero2prod::configuration::get_config;
+use zero2prod::email_client::EmailClient;
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -38,8 +39,18 @@ async fn spawn_app(db_pool: PgPool) -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{port}");
 
+    // Get settings
+    let config = get_config().expect("Failed to read configuration");
+
+    // Build a new email client
+    let sender_email = config
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(config.email_client.base_url, sender_email);
+
     // Run the test instance
-    let server = run(listener, db_pool.clone()).expect("Failed to bind address");
+    let server = run(listener, db_pool.clone(), email_client).expect("Failed to bind address");
     #[allow(clippy::let_underscore_future)]
     let _ = tokio::spawn(server);
 

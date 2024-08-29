@@ -1,12 +1,12 @@
 use validator::ValidateEmail;
 
-/// Subscriber email
+/// Email address
 #[derive(Debug)]
-pub struct SubscriberEmail(String);
+pub struct Email(String);
 
-impl SubscriberEmail {
-    /// Parse subscriber email
-    pub fn parse(email: String) -> Result<SubscriberEmail, String> {
+impl Email {
+    /// Parse email address
+    pub fn parse(email: String) -> Result<Email, String> {
         if ValidateEmail::validate_email(&email) {
             Ok(Self(email))
         } else {
@@ -15,7 +15,7 @@ impl SubscriberEmail {
     }
 }
 
-impl AsRef<str> for SubscriberEmail {
+impl AsRef<str> for Email {
     fn as_ref(&self) -> &str {
         &self.0
     }
@@ -34,19 +34,19 @@ mod tests {
     #[test]
     fn empty_string_is_rejected() {
         let email = "".to_string();
-        assert_err!(SubscriberEmail::parse(email));
+        assert_err!(Email::parse(email));
     }
 
     #[test]
     fn email_missing_at_symbol_is_rejected() {
         let email = "ursuladomain.com".to_string();
-        assert_err!(SubscriberEmail::parse(email));
+        assert_err!(Email::parse(email));
     }
 
     #[test]
     fn email_missing_subject_is_rejected() {
         let email = "@domain.com".to_string();
-        assert_err!(SubscriberEmail::parse(email));
+        assert_err!(Email::parse(email));
     }
 
     #[derive(Debug, Clone)]
@@ -63,6 +63,6 @@ mod tests {
     #[quickcheck_macros::quickcheck]
     fn valid_emails_are_parsed_successfully(email: ValidEmail) -> bool {
         // dbg!(&email.0);
-        SubscriberEmail::parse(email.0).is_ok()
+        Email::parse(email.0).is_ok()
     }
 }

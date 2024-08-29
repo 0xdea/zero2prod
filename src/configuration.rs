@@ -1,3 +1,4 @@
+use crate::domain::Email;
 use config::{Config, ConfigError, Environment, File};
 use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
@@ -7,8 +8,9 @@ use tracing::log::LevelFilter;
 /// Settings
 #[derive(serde::Deserialize)]
 pub struct Settings {
-    pub database: DatabaseSettings,
     pub application: ApplicationSettings,
+    pub database: DatabaseSettings,
+    pub email_client: EmailClientSettings,
 }
 
 /// Application settings
@@ -61,6 +63,20 @@ impl DatabaseSettings {
     }
 }
 
+/// Email client settings
+#[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub base_url: String,
+    pub sender_email: String,
+}
+
+impl EmailClientSettings {
+    /// Parse sender email
+    pub fn sender(&self) -> Result<Email, String> {
+        Email::parse(self.sender_email.clone())
+    }
+}
+
 /// Possible runtime environments
 pub enum Env {
     Development,
@@ -72,7 +88,7 @@ impl Env {
     pub fn as_str(&self) -> &'static str {
         match self {
             Env::Development => "dev",
-            Env::Production => "prod",
+            Env::Production => "prd",
         }
     }
 }
@@ -83,7 +99,7 @@ impl TryFrom<String> for Env {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
             "dev" => Ok(Self::Development),
-            "prod" => Ok(Self::Production),
+            "prd" => Ok(Self::Production),
             other => Err(format!(
                 "`{other}` is not a supported environment. Use either `dev` or `prod`"
             )),

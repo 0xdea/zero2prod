@@ -1,4 +1,4 @@
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
+use crate::domain::{Email, NewSubscriber, SubscriberName};
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
@@ -15,7 +15,7 @@ impl TryFrom<FormData> for NewSubscriber {
     type Error = String;
 
     fn try_from(value: FormData) -> Result<Self, Self::Error> {
-        let email = SubscriberEmail::parse(value.email)?;
+        let email = Email::parse(value.email)?;
         let name = SubscriberName::parse(value.name)?;
         Ok(Self { email, name })
     }
