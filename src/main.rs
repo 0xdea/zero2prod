@@ -1,7 +1,6 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
 use sqlx::postgres::PgPoolOptions;
-
 use zero2prod::configuration::get_config;
 use zero2prod::email_client::EmailClient;
 use zero2prod::startup::run;
@@ -23,6 +22,7 @@ async fn main() -> std::io::Result<()> {
 
     // Build an email client
     let base_url = config.email_client.base_url().expect("Invalid base URL");
+    let timeout = config.email_client.timeout();
     let sender_email = config
         .email_client
         .sender_email()
@@ -31,6 +31,7 @@ async fn main() -> std::io::Result<()> {
         base_url,
         sender_email,
         config.email_client.authorization_token,
+        timeout,
     );
 
     run(

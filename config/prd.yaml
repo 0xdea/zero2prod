@@ -5,3 +5,4 @@ database:
 email_client:
   base_url: https://api.postmarkapp.com
   sender_email: test@gmail.com
+  authorization_token: my_secret_token

@@ -71,6 +71,7 @@ pub struct EmailClientSettings {
     base_url: String,
     sender_email: String,
     pub authorization_token: Secret<String>,
+    pub timeout_millis: u64,
 }
 
 impl EmailClientSettings {
@@ -83,6 +84,11 @@ impl EmailClientSettings {
     pub fn sender_email(&self) -> Result<EmailAddress, String> {
         EmailAddress::parse(self.sender_email.clone())
     }
+
+    /// Get configured timeout
+    pub fn timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.timeout_millis)
+    }
 }
 
 /// Possible runtime environments
@@ -92,7 +98,7 @@ pub enum Env {
 }
 
 impl Env {
-    /// Represent Env as a string
+    /// Represent environment as a string
     pub fn as_str(&self) -> &'static str {
         match self {
             Env::Development => "dev",

@@ -52,6 +52,7 @@ async fn spawn_app(db_pool: PgPool) -> TestApp {
         base_url,
         sender_email,
         config.email_client.authorization_token,
+        std::time::Duration::from_millis(200),
     );
 
     // Run the test instance

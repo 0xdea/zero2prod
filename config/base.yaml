@@ -6,3 +6,5 @@ database:
   host: 127.0.0.1
   port: 5432
   database: newsletter
+email_client:
+  timeout_millis: 10000
