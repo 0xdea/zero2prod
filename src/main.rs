@@ -2,8 +2,7 @@
 
 use sqlx::postgres::PgPoolOptions;
 use zero2prod::configuration::get_config;
-use zero2prod::email_client::EmailClient;
-use zero2prod::startup::run;
+use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
@@ -20,27 +19,8 @@ async fn main() -> std::io::Result<()> {
         .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy_with(config.database.db_options());
 
-    // Build an email client
-    let base_url = config.email_client.base_url().expect("Invalid base URL");
-    let timeout = config.email_client.timeout();
-    let sender_email = config
-        .email_client
-        .sender_email()
-        .expect("Invalid sender email address");
-    let email_client = EmailClient::new(
-        base_url,
-        sender_email,
-        config.email_client.authorization_token,
-        timeout,
-    );
-
-    run(
-        std::net::TcpListener::bind(format!(
-            "{}:{}",
-            config.application.app_host, config.application.app_port
-        ))?,
-        db_pool,
-        email_client,
-    )?
-    .await
+    // Build the application and run it
+    let application = Application::build(config, db_pool).await?;
+    application.run_until_stopped().await?;
+    Ok(())
 }
