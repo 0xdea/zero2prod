@@ -2,11 +2,11 @@ use validator::ValidateEmail;
 
 /// Email address
 #[derive(Debug)]
-pub struct Email(String);
+pub struct EmailAddress(String);
 
-impl Email {
+impl EmailAddress {
     /// Parse email address
-    pub fn parse(email: String) -> Result<Email, String> {
+    pub fn parse(email: String) -> Result<EmailAddress, String> {
         if ValidateEmail::validate_email(&email) {
             Ok(Self(email))
         } else {
@@ -15,7 +15,7 @@ impl Email {
     }
 }
 
-impl AsRef<str> for Email {
+impl AsRef<str> for EmailAddress {
     fn as_ref(&self) -> &str {
         &self.0
     }
@@ -34,19 +34,19 @@ mod tests {
     #[test]
     fn empty_string_is_rejected() {
         let email = "".to_string();
-        assert_err!(Email::parse(email));
+        assert_err!(EmailAddress::parse(email));
     }
 
     #[test]
     fn email_missing_at_symbol_is_rejected() {
         let email = "ursuladomain.com".to_string();
-        assert_err!(Email::parse(email));
+        assert_err!(EmailAddress::parse(email));
     }
 
     #[test]
     fn email_missing_subject_is_rejected() {
         let email = "@domain.com".to_string();
-        assert_err!(Email::parse(email));
+        assert_err!(EmailAddress::parse(email));
     }
 
     #[derive(Debug, Clone)]
@@ -63,6 +63,6 @@ mod tests {
     #[quickcheck_macros::quickcheck]
     fn valid_emails_are_parsed_successfully(email: ValidEmail) -> bool {
         // dbg!(&email.0);
-        Email::parse(email.0).is_ok()
+        EmailAddress::parse(email.0).is_ok()
     }
 }

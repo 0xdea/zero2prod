@@ -1,4 +1,4 @@
-use crate::domain::Email;
+use crate::domain::EmailAddress;
 use config::{Config, ConfigError, Environment, File};
 use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
@@ -74,8 +74,8 @@ pub struct EmailClientSettings {
 
 impl EmailClientSettings {
     /// Parse sender email
-    pub fn sender(&self) -> Result<Email, String> {
-        Email::parse(self.sender_email.clone())
+    pub fn sender(&self) -> Result<EmailAddress, String> {
+        EmailAddress::parse(self.sender_email.clone())
     }
 }
 
