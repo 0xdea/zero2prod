@@ -3,5 +3,5 @@ application:
 database:
   require_ssl: false
 email_client:
-  base_url: localhost
+  base_url: http://localhost
   sender_email: test@example.org

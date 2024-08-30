@@ -4,6 +4,7 @@ use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
 use tracing::log::LevelFilter;
+use url::Url;
 
 /// Settings
 #[derive(serde::Deserialize)]
@@ -66,7 +67,8 @@ impl DatabaseSettings {
 /// Email client settings
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
-    pub base_url: String,
+    #[serde(with = "url_serde")]
+    pub base_url: Url,
     pub sender_email: String,
 }
 

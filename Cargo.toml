@@ -26,6 +26,8 @@ tracing-actix-web = "0.7"
 secrecy = { version = "0.8", features = ["serde"] }
 validator = "0.18"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+url = "1.7.2"
+url_serde = "0.2"
 
 [dependencies.sqlx]
 version = "0.8"
@@ -38,6 +40,7 @@ rand = "0.8"
 fake = "2.9"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
+wiremock = "0.6"
 
 [profile.release]
 # see https://github.com/johnthagen/min-sized-rust
