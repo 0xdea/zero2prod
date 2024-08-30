@@ -43,11 +43,16 @@ async fn spawn_app(db_pool: PgPool) -> TestApp {
     let config = get_config().expect("Failed to read configuration");
 
     // Build a new email client
+    let base_url = config.email_client.base_url().expect("Invalid base URL");
     let sender_email = config
         .email_client
-        .sender()
+        .sender_email()
         .expect("Invalid sender email address.");
-    let email_client = EmailClient::new(config.email_client.base_url, sender_email);
+    let email_client = EmailClient::new(
+        base_url,
+        sender_email,
+        config.email_client.authorization_token,
+    );
 
     // Run the test instance
     let server = run(listener, db_pool.clone(), email_client).expect("Failed to bind address");

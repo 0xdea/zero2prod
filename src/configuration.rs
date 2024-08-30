@@ -1,10 +1,11 @@
 use crate::domain::EmailAddress;
 use config::{Config, ConfigError, Environment, File};
+use reqwest::Url;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
 use tracing::log::LevelFilter;
-use url::Url;
+use url::ParseError;
 
 /// Settings
 #[derive(serde::Deserialize)]
@@ -24,12 +25,12 @@ pub struct ApplicationSettings {
 /// Database settings
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
-    pub username: String,
-    pub password: Secret<String>,
-    pub host: String,
-    pub port: u16,
-    pub database: String,
-    pub require_ssl: bool,
+    username: String,
+    password: Secret<String>,
+    host: String,
+    port: u16,
+    database: String,
+    require_ssl: bool,
 }
 
 impl DatabaseSettings {
@@ -67,14 +68,19 @@ impl DatabaseSettings {
 /// Email client settings
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
-    #[serde(with = "url_serde")]
-    pub base_url: Url,
-    pub sender_email: String,
+    base_url: String,
+    sender_email: String,
+    pub authorization_token: Secret<String>,
 }
 
 impl EmailClientSettings {
+    /// Parse base URL
+    pub fn base_url(&self) -> Result<Url, ParseError> {
+        Url::parse(&self.base_url)
+    }
+
     /// Parse sender email
-    pub fn sender(&self) -> Result<EmailAddress, String> {
+    pub fn sender_email(&self) -> Result<EmailAddress, String> {
         EmailAddress::parse(self.sender_email.clone())
     }
 }

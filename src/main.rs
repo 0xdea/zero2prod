@@ -1,11 +1,4 @@
-// TODO: remove temporary annoying clippy lints
-#![warn(
-    clippy::all,
-    //clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo,
-)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
 use sqlx::postgres::PgPoolOptions;
 
@@ -29,11 +22,16 @@ async fn main() -> std::io::Result<()> {
         .connect_lazy_with(config.database.db_options());
 
     // Build an email client
+    let base_url = config.email_client.base_url().expect("Invalid base URL");
     let sender_email = config
         .email_client
-        .sender()
+        .sender_email()
         .expect("Invalid sender email address");
-    let email_client = EmailClient::new(config.email_client.base_url, sender_email);
+    let email_client = EmailClient::new(
+        base_url,
+        sender_email,
+        config.email_client.authorization_token,
+    );
 
     run(
         std::net::TcpListener::bind(format!(

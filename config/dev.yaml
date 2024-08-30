@@ -5,3 +5,4 @@ database:
 email_client:
   base_url: http://localhost
   sender_email: test@example.org
+  authorization_token: my_secret_token
