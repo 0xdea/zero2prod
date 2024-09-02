@@ -1,3 +1,4 @@
+use reqwest::Client;
 use sqlx::PgPool;
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
@@ -26,6 +27,18 @@ static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
+}
+
+impl TestApp {
+    pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
+        Client::new()
+            .post(format!("{}/subscriptions", &self.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
 }
 
 /// Spin up a test application and return its data
