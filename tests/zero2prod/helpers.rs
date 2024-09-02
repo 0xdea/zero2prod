@@ -1,5 +1,6 @@
 use reqwest::Client;
 use sqlx::PgPool;
+use wiremock::MockServer;
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -26,7 +27,7 @@ static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
 /// Test application data
 pub struct TestApp {
     pub address: String,
-    pub db_pool: PgPool,
+    pub email_server: MockServer,
 }
 
 impl TestApp {
@@ -46,10 +47,16 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
     // Initialize logging
     std::sync::LazyLock::force(&TRACING);
 
-    // Get settings and modify them to use a random port for the TCP listener
+    // Launch a mock server to stand in for Postmark's API
+    let email_server = MockServer::start().await;
+
+    // Get settings and modify them for testing
     let config = {
         let mut c = get_config().expect("Failed to read configuration");
+        // Listen on a random TCP port
         c.application.app_port = 0;
+        // Use the mock server as email API
+        c.email_client.base_url = email_server.uri();
         c
     };
 
@@ -62,5 +69,8 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
     // Run the application and return its data
     #[allow(clippy::let_underscore_future)]
     let _ = tokio::spawn(application.run_until_stopped());
-    TestApp { address, db_pool }
+    TestApp {
+        address,
+        email_server,
+    }
 }

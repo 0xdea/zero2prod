@@ -1,4 +1,5 @@
 use crate::domain::{EmailAddress, NewSubscriber, SubscriberName};
+use crate::email_client::EmailClient;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
@@ -24,20 +25,33 @@ impl TryFrom<FormData> for NewSubscriber {
 /// Subscriptions handler
 #[tracing::instrument(
     name = "Adding a new subscriber",
-    skip(form, db_pool),
+    skip(form, db_pool, email_client),
     fields(
         subscriber_email = %form.email,
         subscriber_name= %form.name
     )
 )]
-pub async fn subscribe(form: web::Form<FormData>, db_pool: web::Data<PgPool>) -> HttpResponse {
+pub async fn subscribe(
+    form: web::Form<FormData>,
+    db_pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
+) -> HttpResponse {
     // Parse subscriber data
     let Ok(new_subscriber) = form.0.try_into() else {
         return HttpResponse::BadRequest().finish();
     };
 
-    // Insert subscriber
-    insert_subscriber(&new_subscriber, &db_pool)
+    // Insert subscriber and send confirmation email
+    if insert_subscriber(&new_subscriber, &db_pool).await.is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
+    email_client
+        .send_email(
+            new_subscriber.email,
+            "Welcome!",
+            "Welcome to our newsletter.",
+            "Welcome to our newsletter.",
+        )
         .await
         .map_or_else(
             |_| HttpResponse::InternalServerError().finish(),

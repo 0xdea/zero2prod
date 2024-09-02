@@ -68,8 +68,8 @@ impl DatabaseSettings {
 /// Email client settings
 #[derive(serde::Deserialize)]
 pub struct EmailClientSettings {
-    base_url: String,
-    sender_email: String,
+    pub base_url: String,
+    pub sender_email: String,
     pub authorization_token: Secret<String>,
     pub timeout_millis: u64,
 }
