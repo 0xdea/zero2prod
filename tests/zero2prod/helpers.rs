@@ -41,7 +41,7 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
     };
 
     // Build the application and get its address
-    let application = Application::build(config, db_pool.clone())
+    let application = Application::build_with_db_pool(config, db_pool.clone())
         .await
         .expect("Failed to build application");
     let address = format!("http://127.0.0.1:{}", application.port());

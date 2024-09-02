@@ -3,6 +3,7 @@ use crate::email_client::EmailClient;
 use crate::routes::{health_check, subscribe};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
+use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 
@@ -13,8 +14,22 @@ pub struct Application {
 }
 
 impl Application {
+    /// Build an application based on settings
+    pub async fn build(config: Settings) -> Result<Self, std::io::Error> {
+        // Connect to the database
+        let db_pool = PgPoolOptions::new()
+            .acquire_timeout(std::time::Duration::from_secs(2))
+            .connect_lazy_with(config.database.db_options());
+
+        // Run the HTTP server and return its data
+        Application::build_with_db_pool(config, db_pool).await
+    }
+
     /// Build an application based on settings and database pool
-    pub async fn build(config: Settings, db_pool: PgPool) -> Result<Self, std::io::Error> {
+    pub async fn build_with_db_pool(
+        config: Settings,
+        db_pool: PgPool,
+    ) -> Result<Self, std::io::Error> {
         // Build an email client
         let base_url = config.email_client.base_url().expect("Invalid base URL");
         let sender_email = config
