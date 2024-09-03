@@ -13,7 +13,7 @@ static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
         init_subscriber(get_subscriber(
             subscriber_name,
             default_filter_level,
-            std::io::stderr,
+            std::io::stdout,
         ));
     } else {
         init_subscriber(get_subscriber(
