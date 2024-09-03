@@ -27,6 +27,7 @@ static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
 /// Test application data
 pub struct TestApp {
     pub address: String,
+    pub port: u16,
     pub email_server: MockServer,
 }
 
@@ -61,16 +62,18 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
     };
 
     // Build the application and get its address
-    let application = Application::build_with_db_pool(config, db_pool.clone())
+    let app = Application::build_with_db_pool(config, db_pool)
         .await
         .expect("Failed to build application");
-    let address = format!("http://127.0.0.1:{}", application.port());
+    let port = app.port();
+    let address = format!("http://127.0.0.1:{}", port);
 
     // Run the application and return its data
     #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(application.run_until_stopped());
+    let _ = tokio::spawn(app.run_until_stopped());
     TestApp {
         address,
+        port,
         email_server,
     }
 }

@@ -1,12 +1,10 @@
 use crate::domain::{EmailAddress, NewSubscriber, SubscriberName};
 use crate::email_client::EmailClient;
+use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
-
-/// Confirmation link
-const CONFIRMATION_LINK: &str = "https://api.example.org/subscriptions/confirm";
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -28,7 +26,7 @@ impl TryFrom<FormData> for NewSubscriber {
 /// Subscriptions handler
 #[tracing::instrument(
     name = "Adding a new subscriber",
-    skip(form, db_pool, email_client),
+    skip(form, db_pool, email_client, base_url),
     fields(
         subscriber_email = %form.email,
         subscriber_name= %form.name
@@ -38,6 +36,7 @@ pub async fn subscribe(
     form: web::Form<FormData>,
     db_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
+    base_url: web::Data<ApplicationBaseUrl>,
 ) -> HttpResponse {
     // Parse subscriber data
     let Ok(new_subscriber) = form.0.try_into() else {
@@ -48,7 +47,7 @@ pub async fn subscribe(
     if insert_subscriber(&new_subscriber, &db_pool).await.is_err() {
         return HttpResponse::InternalServerError().finish();
     }
-    send_confirmation_email(&email_client, new_subscriber)
+    send_confirmation_email(&email_client, new_subscriber, &base_url.0)
         .await
         .map_or_else(
             |_| HttpResponse::InternalServerError().finish(),
@@ -89,8 +88,10 @@ pub async fn insert_subscriber(
 pub async fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,
+    base_url: &str,
 ) -> Result<(), reqwest::Error> {
-    let confirmation_link = CONFIRMATION_LINK;
+    // TODO
+    let confirmation_link = format!("{base_url}/subscriptions/confirm?subscription_token=mytoken");
     let html_body = &format!(
         "Welcome to our newsletter!<br />\
         Click <a href=\"{confirmation_link}\">here</a> to confirm your subscription."

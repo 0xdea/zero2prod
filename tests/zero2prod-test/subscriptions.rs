@@ -6,7 +6,7 @@ use wiremock::{Mock, ResponseTemplate};
 
 #[sqlx::test]
 async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
-    let app = spawn_app(db_pool.clone()).await;
+    let app = spawn_app(db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))

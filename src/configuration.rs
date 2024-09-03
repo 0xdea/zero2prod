@@ -20,6 +20,7 @@ pub struct Settings {
 pub struct ApplicationSettings {
     pub app_host: String,
     pub app_port: u16,
+    pub base_url: String,
 }
 
 /// Database settings

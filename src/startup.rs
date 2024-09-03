@@ -1,6 +1,6 @@
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
-use crate::routes::{health_check, subscribe};
+use crate::routes::{confirm, health_check, subscribe};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use sqlx::postgres::PgPoolOptions;
@@ -12,6 +12,9 @@ pub struct Application {
     server: Server,
     port: u16,
 }
+
+/// Application base URL
+pub struct ApplicationBaseUrl(pub String);
 
 impl Application {
     /// Build an application based on settings
@@ -48,8 +51,8 @@ impl Application {
             "{}:{}",
             config.application.app_host, config.application.app_port
         ))?;
-        let port = listener.local_addr().unwrap().port();
-        let server = run_server(listener, db_pool, email_client)?;
+        let port = listener.local_addr()?.port();
+        let server = run_server(listener, db_pool, email_client, config.application.base_url)?;
         Ok(Self { server, port })
     }
 
@@ -69,10 +72,12 @@ pub fn run_server(
     listener: std::net::TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
+    base_url: String,
 ) -> Result<Server, std::io::Error> {
     // Prepare data to be added the application context
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
+    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
 
     // Start the HTTP server
     Ok(HttpServer::new(move || {
@@ -80,8 +85,10 @@ pub fn run_server(
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
+            .route("/subscriptions/confirm", web::get().to(confirm))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
+            .app_data(base_url.clone())
     })
     .listen(listener)?
     .run())
