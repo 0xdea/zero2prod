@@ -117,7 +117,7 @@ mod tests {
         EmailClient::new(
             base_url,
             email(),
-            Secret::new(Password(8..17).fake()),
+            Secret::new(Password(32..33).fake()),
             std::time::Duration::from_millis(200),
         )
     }

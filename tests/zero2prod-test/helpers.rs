@@ -1,4 +1,5 @@
-use reqwest::Client;
+use linkify::{LinkFinder, LinkKind};
+use reqwest::{Client, Url};
 use sqlx::PgPool;
 use wiremock::MockServer;
 use zero2prod::configuration::get_config;
@@ -31,7 +32,14 @@ pub struct TestApp {
     pub email_server: MockServer,
 }
 
+/// Confirmation links
+pub struct ConfirmationLinks {
+    pub html_link: Url,
+    pub text_link: Url,
+}
+
 impl TestApp {
+    /// Perform a POST request to the subscriptions endpoint
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         Client::new()
             .post(format!("{}/subscriptions", &self.address))
@@ -40,6 +48,34 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to execute request")
+    }
+
+    /// Extract confirmation links embedded in the request to the email API
+    pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
+        // Parse the request body as JSON
+        let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+
+        // Extract the link
+        let get_link = |s| {
+            let links: Vec<_> = LinkFinder::new()
+                .links(s)
+                .filter(|l| *l.kind() == LinkKind::Url)
+                .collect();
+            assert_eq!(links.len(), 1);
+            let raw_link = links[0].as_str().to_owned();
+            let mut link = Url::parse(&raw_link).unwrap();
+            assert_eq!(link.host_str().unwrap(), "127.0.0.1");
+            link.set_port(Some(self.port)).unwrap();
+            link
+        };
+
+        // Return the extracted links
+        let html_link = get_link(body["HtmlBody"].as_str().unwrap());
+        let text_link = get_link(body["TextBody"].as_str().unwrap());
+        ConfirmationLinks {
+            html_link,
+            text_link,
+        }
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::helpers::spawn_app;
-use linkify::{LinkFinder, LinkKind};
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -110,23 +109,8 @@ async fn subscribe_sends_a_confirmation_email_with_a_link(db_pool: PgPool) {
         .await;
 
     app.post_subscriptions(body.into()).await;
-
-    // Get the first request and parse the body as JSON
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
-    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+    let confirmation_links = app.get_confirmation_links(email_request);
 
-    // Extract the link
-    let get_link = |s| {
-        let links: Vec<_> = LinkFinder::new()
-            .links(s)
-            .filter(|l| *l.kind() == LinkKind::Url)
-            .collect();
-        assert_eq!(links.len(), 1);
-        links[0].as_str().to_owned()
-    };
-
-    // Ensure HTML and Text links are identical
-    let html_link = get_link(body["HtmlBody"].as_str().unwrap());
-    let text_link = get_link(body["TextBody"].as_str().unwrap());
-    assert_eq!(html_link, text_link);
+    assert_eq!(confirmation_links.html_link, confirmation_links.text_link);
 }

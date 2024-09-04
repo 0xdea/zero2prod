@@ -27,6 +27,7 @@ secrecy = { version = "0.8", features = ["serde"] }
 validator = "0.18"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 url = "2.5"
+rand = { version = "0.8", features = ["std_rng"] }
 
 [dependencies.sqlx]
 version = "0.8"
@@ -35,7 +36,6 @@ features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "mig
 
 [dev-dependencies]
 claim = "0.5"
-rand = "0.8"
 fake = "2.9"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"

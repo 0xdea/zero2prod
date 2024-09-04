@@ -1,6 +1,5 @@
 use crate::helpers::spawn_app;
-use linkify::{LinkFinder, LinkKind};
-use reqwest::{get, Url};
+use reqwest::get;
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -29,25 +28,39 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool)
 
     app.post_subscriptions(body.into()).await;
 
-    // Get the first request and parse the body as JSON
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
-    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+    let confirmation_links = app.get_confirmation_links(email_request);
 
-    // Extract the link
-    let get_link = |s| {
-        let links: Vec<_> = LinkFinder::new()
-            .links(s)
-            .filter(|l| *l.kind() == LinkKind::Url)
-            .collect();
-        assert_eq!(links.len(), 1);
-        links[0].as_str().to_owned()
-    };
-    let raw_link = &get_link(body["HtmlBody"].as_str().unwrap());
-    let mut link = Url::parse(raw_link).unwrap();
-    // TODO
-    link.set_port(Some(app.port)).unwrap();
-    assert_eq!(link.host_str().unwrap(), "127.0.0.1");
-
-    let response = get(link).await.unwrap();
+    let response = get(confirmation_links.html_link).await.unwrap();
     assert_eq!(response.status(), 200)
+}
+
+#[sqlx::test]
+async fn clicking_on_the_confirmation_link_confirms_a_subscriber(db_pool: PgPool) {
+    let app = spawn_app(db_pool.clone()).await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&app.email_server)
+        .await;
+
+    app.post_subscriptions(body.into()).await;
+    let email_request = &app.email_server.received_requests().await.unwrap()[0];
+    let confirmation_links = app.get_confirmation_links(email_request);
+
+    get(confirmation_links.html_link)
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+
+    let saved = sqlx::query!("SELECT email, name, status FROM subscriptions")
+        .fetch_one(&db_pool)
+        .await
+        .expect("Failed to fetch saved subscription");
+    assert_eq!(saved.email, "ursula_le_guin@gmail.com");
+    assert_eq!(saved.name, "le guin");
+    assert_eq!(saved.status, "confirmed");
 }
