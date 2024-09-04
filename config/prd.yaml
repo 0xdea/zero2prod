@@ -1,5 +1,6 @@
 application:
   app_host: 0.0.0.0
+  base_url: https://api.example.org
 database:
   require_ssl: true
 email_client:
