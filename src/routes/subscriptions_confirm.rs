@@ -9,6 +9,7 @@ pub struct Parameters {
 }
 
 /// Confirmation handler
+// TODO: What happens if a user clicks on a confirmation link twice?
 #[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
 pub async fn confirm(
     parameters: web::Query<Parameters>,
@@ -36,6 +37,7 @@ pub async fn confirm(
 }
 
 /// Get subscriber id from subscription token
+// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
 #[tracing::instrument(
     name = "Getting subscriber id from subscription token",
     skip(subscription_token, db_pool)
