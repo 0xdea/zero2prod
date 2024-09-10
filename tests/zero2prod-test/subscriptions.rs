@@ -15,6 +15,7 @@ async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
         .await;
 
     let response = app.post_subscriptions(body.into()).await;
+
     assert_eq!(response.status(), 200);
 }
 
@@ -113,4 +114,19 @@ async fn subscribe_sends_a_confirmation_email_with_a_link(db_pool: PgPool) {
     let confirmation_links = app.get_confirmation_links(email_request);
 
     assert_eq!(confirmation_links.html_link, confirmation_links.text_link);
+}
+
+#[sqlx::test]
+async fn subscribe_fails_if_there_is_a_fatal_database_error(db_pool: PgPool) {
+    let app = spawn_app(db_pool.clone()).await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    sqlx::query!("ALTER TABLE subscription_tokens DROP COLUMN subscription_token;",)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+    let response = app.post_subscriptions(body.into()).await;
+
+    assert_eq!(response.status().as_u16(), 500);
 }

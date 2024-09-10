@@ -32,6 +32,7 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool)
     let confirmation_links = app.get_confirmation_links(email_request);
 
     let response = get(confirmation_links.html_link).await.unwrap();
+
     assert_eq!(response.status(), 200)
 }
 
