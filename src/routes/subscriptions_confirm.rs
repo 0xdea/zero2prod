@@ -34,7 +34,7 @@ pub async fn confirm(
             .map_or_else(
                 // TODO: StatusCode?
                 |_| HttpResponse::InternalServerError().finish(),
-                |_| HttpResponse::Ok().finish(),
+                |()| HttpResponse::Ok().finish(),
             ),
     }
 }

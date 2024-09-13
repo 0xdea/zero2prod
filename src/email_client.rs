@@ -89,15 +89,13 @@ mod tests {
     impl wiremock::Match for SendEmailBodyMatcher {
         fn matches(&self, request: &Request) -> bool {
             let result = serde_json::from_slice::<serde_json::Value>(&request.body);
-            if let Ok(body) = result {
+            result.map_or(false, |body| {
                 body.get("From").is_some()
                     && body.get("To").is_some()
                     && body.get("Subject").is_some()
                     && body.get("HtmlBody").is_some()
                     && body.get("TextBody").is_some()
-            } else {
-                false
-            }
+            })
         }
     }
 
@@ -144,7 +142,7 @@ mod tests {
         let outcome = email_client
             .send_email(email(), &subject(), &content(), &content())
             .await;
-        assert_ok!(outcome)
+        assert_ok!(outcome);
     }
 
     #[tokio::test]
@@ -161,7 +159,7 @@ mod tests {
         let outcome = email_client
             .send_email(email(), &subject(), &content(), &content())
             .await;
-        assert_ok!(outcome)
+        assert_ok!(outcome);
     }
 
     #[tokio::test]

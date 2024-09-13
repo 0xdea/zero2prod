@@ -28,10 +28,11 @@ impl Application {
             .connect_lazy_with(config.database.db_options());
 
         // Run the HTTP server and return its data
-        Application::build_with_db_pool(config, db_pool).await
+        Self::build_with_db_pool(config, db_pool).await
     }
 
     /// Build an application based on settings and database pool
+    #[allow(clippy::unused_async)]
     pub async fn build_with_db_pool(config: Settings, db_pool: PgPool) -> Result<Self, io::Error> {
         // Build an email client
         let base_url = config.email_client.base_url().expect("Invalid base URL");
@@ -57,7 +58,7 @@ impl Application {
     }
 
     /// Get application port
-    pub fn port(&self) -> u16 {
+    pub const fn port(&self) -> u16 {
         self.port
     }
 

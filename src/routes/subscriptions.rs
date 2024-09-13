@@ -1,4 +1,3 @@
-use std::fmt::{Debug, Display, Formatter};
 use std::{error, fmt, iter};
 
 use actix_web::http::StatusCode;
@@ -47,8 +46,8 @@ pub enum SubscribeError {
     SendEmailError(#[from] reqwest::Error),
 }
 
-impl Debug for SubscribeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl fmt::Debug for SubscribeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error_chain_fmt(self, f)
     }
 }
@@ -56,12 +55,12 @@ impl Debug for SubscribeError {
 impl ResponseError for SubscribeError {
     fn status_code(&self) -> StatusCode {
         match self {
-            SubscribeError::ValidationError(_) => StatusCode::BAD_REQUEST,
-            SubscribeError::PoolError(_)
-            | SubscribeError::TransactionCommitError(_)
-            | SubscribeError::InsertSubscriberError(_)
-            | SubscribeError::StoreTokenError(_)
-            | SubscribeError::SendEmailError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ValidationError(_) => StatusCode::BAD_REQUEST,
+            Self::PoolError(_)
+            | Self::TransactionCommitError(_)
+            | Self::InsertSubscriberError(_)
+            | Self::StoreTokenError(_)
+            | Self::SendEmailError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -145,8 +144,8 @@ fn generate_subscription_token() -> String {
 /// Store token error type
 pub struct StoreTokenError(sqlx::Error);
 
-impl Display for StoreTokenError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl fmt::Display for StoreTokenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "A database error has occurred while trying to store a subscription token"
@@ -154,8 +153,8 @@ impl Display for StoreTokenError {
     }
 }
 
-impl Debug for StoreTokenError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+impl fmt::Debug for StoreTokenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error_chain_fmt(self, f)
     }
 }
@@ -218,7 +217,7 @@ pub async fn send_confirmation_email(
 }
 
 /// Provide a representation for any type that implements `Error`
-fn error_chain_fmt(e: &impl error::Error, f: &mut Formatter<'_>) -> fmt::Result {
+fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "{e}\n")?;
     let mut current = e.source();
     while let Some(cause) = current {

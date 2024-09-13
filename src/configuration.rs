@@ -38,6 +38,7 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
+    //noinspection ALL
     /// Generate connection string from database settings (does not support SSL mode)
     #[deprecated(since = "0.1.1", note = "use `db_options` instead")]
     pub fn db_url(&self) -> Secret<String> {
@@ -90,7 +91,7 @@ impl EmailClientSettings {
     }
 
     /// Get configured timeout
-    pub fn timeout(&self) -> time::Duration {
+    pub const fn timeout(&self) -> time::Duration {
         time::Duration::from_millis(self.timeout_millis)
     }
 }
@@ -103,10 +104,10 @@ pub enum Env {
 
 impl Env {
     /// Represent environment as a string
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            Env::Development => "dev",
-            Env::Production => "prd",
+            Self::Development => "dev",
+            Self::Production => "prd",
         }
     }
 }

@@ -6,7 +6,7 @@ pub struct EmailAddress(String);
 
 impl EmailAddress {
     /// Parse email address
-    pub fn parse(email: String) -> Result<EmailAddress, String> {
+    pub fn parse(email: String) -> Result<Self, String> {
         if ValidateEmail::validate_email(&email) {
             Ok(Self(email))
         } else {
@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn empty_string_is_rejected() {
-        let email = "".to_string();
+        let email = String::new();
         assert_err!(EmailAddress::parse(email));
     }
 

@@ -44,6 +44,15 @@ wiremock = "0.6"
 serde_json = "1.0"
 linkify = "0.10.0"
 
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
 [profile.release]
 # see https://github.com/johnthagen/min-sized-rust
 strip = true

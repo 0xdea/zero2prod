@@ -105,7 +105,7 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
         .await
         .expect("Failed to build application");
     let port = app.port();
-    let address = format!("http://127.0.0.1:{}", port);
+    let address = format!("http://127.0.0.1:{port}");
 
     // Run the application and return its data
     #[allow(clippy::let_underscore_future)]

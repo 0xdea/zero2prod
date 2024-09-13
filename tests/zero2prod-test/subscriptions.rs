@@ -59,7 +59,7 @@ async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
             response.status(),
             400,
             "The API did not fail with 400 Bad Request when the payload was {description}"
-        )
+        );
     }
 }
 

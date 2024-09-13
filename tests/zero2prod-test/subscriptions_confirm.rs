@@ -34,7 +34,7 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool)
 
     let response = get(confirmation_links.html_link).await.unwrap();
 
-    assert_eq!(response.status(), 200)
+    assert_eq!(response.status(), 200);
 }
 
 #[sqlx::test]

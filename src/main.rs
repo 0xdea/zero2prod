@@ -1,5 +1,3 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
-
 use std::io;
 
 use zero2prod::configuration::get_config;
