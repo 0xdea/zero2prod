@@ -1,13 +1,15 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
+use std::io;
+
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> io::Result<()> {
     // Initialize logging
-    let subscriber = get_subscriber("zero2prod".into(), "info".into(), std::io::stdout);
+    let subscriber = get_subscriber("zero2prod".into(), "info".into(), io::stdout);
     init_subscriber(subscriber);
 
     // Get settings

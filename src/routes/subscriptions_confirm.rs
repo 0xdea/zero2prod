@@ -18,18 +18,21 @@ pub async fn confirm(
     // Get subscriber id from subscription token
     let Ok(id) = get_subscriber_id_from_token(&parameters.subscription_token, &db_pool).await
     else {
+        // TODO: StatusCode?
         return HttpResponse::InternalServerError().finish();
     };
 
     // Confirm subscriber if token is valid
     match id {
         // Non-existing token
+        // TODO: StatusCode?
         None => HttpResponse::Unauthorized().finish(),
 
         // Valid token
         Some(subscriber_id) => confirm_subscriber(subscriber_id, &db_pool)
             .await
             .map_or_else(
+                // TODO: StatusCode?
                 |_| HttpResponse::InternalServerError().finish(),
                 |_| HttpResponse::Ok().finish(),
             ),

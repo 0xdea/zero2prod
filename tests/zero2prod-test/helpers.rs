@@ -1,26 +1,29 @@
+use std::{env, io, sync};
+
 use linkify::{LinkFinder, LinkKind};
 use reqwest::{Client, Url};
 use sqlx::PgPool;
 use wiremock::MockServer;
+
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 /// Ensure the tracing stack is initialized only once
-static TRACING: std::sync::LazyLock<()> = std::sync::LazyLock::new(|| {
+static TRACING: sync::LazyLock<()> = sync::LazyLock::new(|| {
     let default_filter_level = "info".to_string();
     let subscriber_name = "test".to_string();
-    if std::env::var("TEST_LOG").is_ok() {
+    if env::var("TEST_LOG").is_ok() {
         init_subscriber(get_subscriber(
             subscriber_name,
             default_filter_level,
-            std::io::stdout,
+            io::stdout,
         ));
     } else {
         init_subscriber(get_subscriber(
             subscriber_name,
             default_filter_level,
-            std::io::sink,
+            io::sink,
         ));
     };
 });
@@ -82,7 +85,7 @@ impl TestApp {
 /// Spin up a test application and return its data
 pub async fn spawn_app(db_pool: PgPool) -> TestApp {
     // Initialize logging
-    std::sync::LazyLock::force(&TRACING);
+    sync::LazyLock::force(&TRACING);
 
     // Launch a mock server to stand in for Postmark's API
     let email_server = MockServer::start().await;

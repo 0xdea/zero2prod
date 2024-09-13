@@ -1,4 +1,5 @@
-use crate::domain::EmailAddress;
+use std::{env, time};
+
 use config::{Config, ConfigError, Environment, File};
 use reqwest::Url;
 use secrecy::{ExposeSecret, Secret};
@@ -6,6 +7,8 @@ use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
 use tracing::log::LevelFilter;
 use url::ParseError;
+
+use crate::domain::EmailAddress;
 
 /// Settings
 #[derive(serde::Deserialize)]
@@ -87,8 +90,8 @@ impl EmailClientSettings {
     }
 
     /// Get configured timeout
-    pub fn timeout(&self) -> std::time::Duration {
-        std::time::Duration::from_millis(self.timeout_millis)
+    pub fn timeout(&self) -> time::Duration {
+        time::Duration::from_millis(self.timeout_millis)
     }
 }
 
@@ -124,11 +127,11 @@ impl TryFrom<String> for Env {
 
 /// Get settings from configuration files
 pub fn get_config() -> Result<Settings, ConfigError> {
-    let path = std::env::current_dir().expect("Failed to determine the current directory");
+    let path = env::current_dir().expect("Failed to determine the current directory");
     let config_dir = path.join("config");
 
     // Detect the running environment (default: `dev`)
-    let env: Env = std::env::var("APP_ENVIRONMENT")
+    let env: Env = env::var("APP_ENVIRONMENT")
         .unwrap_or_else(|_| "dev".into())
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT");

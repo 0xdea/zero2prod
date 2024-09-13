@@ -1,6 +1,9 @@
-use crate::domain::EmailAddress;
+use std::time;
+
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, Secret};
+
+use crate::domain::EmailAddress;
 
 /// Send email request data
 #[derive(serde::Serialize)]
@@ -27,7 +30,7 @@ impl EmailClient {
         base_url: Url,
         sender: EmailAddress,
         authorization_token: Secret<String>,
-        timeout: std::time::Duration,
+        timeout: time::Duration,
     ) -> Self {
         let http_client = Client::builder().timeout(timeout).build().unwrap();
         Self {
@@ -119,7 +122,7 @@ mod tests {
             base_url,
             email(),
             Secret::new(Password(32..33).fake()),
-            std::time::Duration::from_millis(200),
+            time::Duration::from_millis(200),
         )
     }
 
@@ -184,7 +187,7 @@ mod tests {
         let email_client = email_client(mock_server.uri().parse().unwrap());
 
         Mock::given(any())
-            .respond_with(ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(180)))
+            .respond_with(ResponseTemplate::new(200).set_delay(time::Duration::from_secs(180)))
             .expect(1)
             .mount(&mock_server)
             .await;

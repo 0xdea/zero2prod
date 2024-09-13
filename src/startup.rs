@@ -1,11 +1,14 @@
-use crate::configuration::Settings;
-use crate::email_client::EmailClient;
-use crate::routes::{confirm, health_check, subscribe};
+use std::{io, net, time};
+
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
+
+use crate::configuration::Settings;
+use crate::email_client::EmailClient;
+use crate::routes::{confirm, health_check, subscribe};
 
 /// Application data
 pub struct Application {
@@ -18,10 +21,10 @@ pub struct ApplicationBaseUrl(pub String);
 
 impl Application {
     /// Build an application based on settings
-    pub async fn build(config: Settings) -> Result<Self, std::io::Error> {
+    pub async fn build(config: Settings) -> Result<Self, io::Error> {
         // Connect to the database
         let db_pool = PgPoolOptions::new()
-            .acquire_timeout(std::time::Duration::from_secs(2))
+            .acquire_timeout(time::Duration::from_secs(2))
             .connect_lazy_with(config.database.db_options());
 
         // Run the HTTP server and return its data
@@ -29,10 +32,7 @@ impl Application {
     }
 
     /// Build an application based on settings and database pool
-    pub async fn build_with_db_pool(
-        config: Settings,
-        db_pool: PgPool,
-    ) -> Result<Self, std::io::Error> {
+    pub async fn build_with_db_pool(config: Settings, db_pool: PgPool) -> Result<Self, io::Error> {
         // Build an email client
         let base_url = config.email_client.base_url().expect("Invalid base URL");
         let sender_email = config
@@ -47,7 +47,7 @@ impl Application {
         );
 
         // Run the HTTP server and return its data
-        let listener = std::net::TcpListener::bind(format!(
+        let listener = net::TcpListener::bind(format!(
             "{}:{}",
             config.application.app_host, config.application.app_port
         ))?;
@@ -62,18 +62,18 @@ impl Application {
     }
 
     /// Run application until it is stopped
-    pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
+    pub async fn run_until_stopped(self) -> Result<(), io::Error> {
         self.server.await
     }
 }
 
 /// Run the HTTP server
 pub fn run_server(
-    listener: std::net::TcpListener,
+    listener: net::TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
-) -> Result<Server, std::io::Error> {
+) -> Result<Server, io::Error> {
     // Prepare data to be added the application context
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);

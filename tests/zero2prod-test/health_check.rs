@@ -1,6 +1,7 @@
-use crate::helpers::spawn_app;
 use reqwest::Client;
 use sqlx::PgPool;
+
+use crate::helpers::spawn_app;
 
 #[sqlx::test]
 async fn health_check_works(db_pool: PgPool) {

@@ -1,8 +1,9 @@
-use crate::helpers::spawn_app;
 use reqwest::get;
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
+
+use crate::helpers::spawn_app;
 
 #[sqlx::test]
 async fn confirmations_without_token_are_rejected_with_a_400(db_pool: PgPool) {

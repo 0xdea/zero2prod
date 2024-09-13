@@ -1,7 +1,8 @@
-use crate::helpers::spawn_app;
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
+
+use crate::helpers::spawn_app;
 
 #[sqlx::test]
 async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
