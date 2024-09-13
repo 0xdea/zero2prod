@@ -154,13 +154,13 @@ fn generate_subscription_token() -> String {
 pub struct StoreTokenError(sqlx::Error);
 
 impl fmt::Debug for StoreTokenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         error_chain_fmt(self, f)
     }
 }
 
 impl Display for StoreTokenError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "A database error has occurred while trying to store a subscription token"
@@ -226,7 +226,7 @@ pub async fn send_confirmation_email(
 }
 
 /// Provide a representation for any type that implements `Error`
-fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+fn error_chain_fmt(e: &impl error::Error, f: &mut Formatter<'_>) -> fmt::Result {
     writeln!(f, "{e}\n")?;
     let mut current = e.source();
     while let Some(cause) = current {
