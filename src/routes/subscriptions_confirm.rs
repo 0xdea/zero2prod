@@ -1,6 +1,11 @@
-use actix_web::{web, HttpResponse};
+use actix_web::http::StatusCode;
+use actix_web::{web, HttpResponse, ResponseError};
+use anyhow::Context;
 use sqlx::PgPool;
+use std::fmt;
 use uuid::Uuid;
+
+use crate::routes::helpers::error_chain_fmt;
 
 /// Web query parameters
 #[derive(serde::Deserialize)]
@@ -8,35 +13,49 @@ pub struct Parameters {
     subscription_token: String,
 }
 
+/// Subscription confirmation error type
+#[derive(thiserror::Error)]
+pub enum ConfirmError {
+    #[error("There is no subscriber associated with the provided token")]
+    UnknownToken,
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
+}
+
+impl fmt::Debug for ConfirmError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        error_chain_fmt(self, f)
+    }
+}
+
+impl ResponseError for ConfirmError {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Self::UnknownToken => StatusCode::UNAUTHORIZED,
+            Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 /// Confirmation handler
 // TODO: What happens if a user clicks on a confirmation link twice?
 #[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
-pub async fn confirm(
+pub async fn subscriptions_confirm(
     parameters: web::Query<Parameters>,
     db_pool: web::Data<PgPool>,
-) -> HttpResponse {
+) -> Result<HttpResponse, ConfirmError> {
     // Get subscriber id from subscription token
-    let Ok(id) = get_subscriber_id_from_token(&parameters.subscription_token, &db_pool).await
-    else {
-        // TODO: StatusCode?
-        return HttpResponse::InternalServerError().finish();
-    };
+    let subscriber_id = get_subscriber_id_from_token(&parameters.subscription_token, &db_pool)
+        .await
+        .context("Failed to retrieve the subscriber id associated with the provided token")?
+        .ok_or(ConfirmError::UnknownToken)?;
 
     // Confirm subscriber if token is valid
-    match id {
-        // Non-existing token
-        // TODO: StatusCode?
-        None => HttpResponse::Unauthorized().finish(),
+    confirm_subscriber(subscriber_id, &db_pool)
+        .await
+        .context("Failed to update subscriber status to `confirmed`")?;
 
-        // Valid token
-        Some(subscriber_id) => confirm_subscriber(subscriber_id, &db_pool)
-            .await
-            .map_or_else(
-                // TODO: StatusCode?
-                |_| HttpResponse::InternalServerError().finish(),
-                |()| HttpResponse::Ok().finish(),
-            ),
-    }
+    Ok(HttpResponse::Ok().finish())
 }
 
 /// Get subscriber id from subscription token
@@ -54,11 +73,8 @@ pub async fn get_subscriber_id_from_token(
         subscription_token,
     )
     .fetch_optional(db_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
-    })?;
+    .await?;
+
     Ok(result.map(|r| r.subscriber_id))
 }
 
@@ -70,10 +86,7 @@ pub async fn confirm_subscriber(subscriber_id: Uuid, db_pool: &PgPool) -> Result
         subscriber_id,
     )
     .execute(db_pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        e
-    })?;
+    .await?;
+
     Ok(())
 }

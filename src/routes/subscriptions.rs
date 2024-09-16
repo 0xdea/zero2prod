@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::domain::{EmailAddress, NewSubscriber, SubscriberName};
 use crate::email_client::EmailClient;
+use crate::routes::helpers::error_chain_fmt;
 use crate::startup::ApplicationBaseUrl;
 
 /// Web form data
@@ -26,6 +27,7 @@ impl TryFrom<FormData> for NewSubscriber {
     fn try_from(value: FormData) -> Result<Self, Self::Error> {
         let email = EmailAddress::parse(value.email)?;
         let name = SubscriberName::parse(value.name)?;
+
         Ok(Self { email, name })
     }
 }
@@ -63,33 +65,39 @@ impl ResponseError for SubscribeError {
         subscriber_name= %form.name
     )
 )]
-pub async fn subscribe(
+pub async fn subscriptions(
     form: web::Form<FormData>,
     db_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,
 ) -> Result<HttpResponse, SubscribeError> {
-    // Parse subscriber data and begin database transaction
+    // Parse subscriber data
     let new_subscriber = form.0.try_into().map_err(SubscribeError::ValidationError)?;
+
+    // Begin database transaction
     let mut transaction = db_pool
         .begin()
         .await
         .context("Failed to acquire database connection to store a new subscriber")?;
 
-    // Insert subscriber, generate and store a subscription token
+    // Insert subscriber
     let subscriber_id = insert_subscriber(&new_subscriber, &mut transaction)
         .await
         .context("Failed to insert new subscriber in the database")?;
+
+    // Generate and store a subscription token
     let subscription_token = generate_subscription_token();
     store_token(subscriber_id, &subscription_token, &mut transaction)
         .await
         .context("Failed to store confirmation token in the database")?;
 
-    // End database transaction and send confirmation email with subscription token
+    // End database transaction
     transaction
         .commit()
         .await
         .context("Failed to commit SQL transaction to store a new subscriber")?;
+
+    // Send confirmation email with subscription token
     send_confirmation_email(
         &email_client,
         new_subscriber,
@@ -120,10 +128,8 @@ pub async fn insert_subscriber(
         new_subscriber.name.as_ref(),
         Utc::now()
     );
-    transaction.execute(query).await.map_err(|e| {
-        tracing::error!("Failed to execute query: {e:?}");
-        e
-    })?;
+    transaction.execute(query).await?;
+
     Ok(subscriber_id)
 }
 
@@ -178,10 +184,8 @@ pub async fn store_token(
         subscription_token,
         subscriber_id
     );
-    transaction.execute(query).await.map_err(|e| {
-        tracing::error!("Failed to execute query: {:?}", e);
-        StoreTokenError(e)
-    })?;
+    transaction.execute(query).await.map_err(StoreTokenError)?;
+
     Ok(())
 }
 
@@ -209,15 +213,4 @@ pub async fn send_confirmation_email(
     email_client
         .send_email(new_subscriber.email, "Welcome!", html_body, text_body)
         .await
-}
-
-/// Provide a representation for any type that implements `Error`
-fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    writeln!(f, "{e}\n")?;
-    let mut current = e.source();
-    while let Some(cause) = current {
-        writeln!(f, "Caused by:\n\t{cause}")?;
-        current = cause.source();
-    }
-    Ok(())
 }
