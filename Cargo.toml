@@ -29,6 +29,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 url = "2.5"
 rand = { version = "0.8", features = ["std_rng"] }
 thiserror = "1"
+anyhow = "1"
 
 [dependencies.sqlx]
 version = "0.8"
@@ -49,7 +50,6 @@ all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
-
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"

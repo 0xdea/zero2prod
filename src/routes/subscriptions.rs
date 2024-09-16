@@ -2,6 +2,7 @@ use std::{error, fmt, iter};
 
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
+use anyhow::Context;
 use chrono::Utc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -34,8 +35,8 @@ impl TryFrom<FormData> for NewSubscriber {
 pub enum SubscribeError {
     #[error("{0}")]
     ValidationError(String),
-    #[error("{1}")]
-    UnexpectedError(#[source] Box<dyn error::Error>, String),
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
 }
 
 impl fmt::Debug for SubscribeError {
@@ -48,7 +49,7 @@ impl ResponseError for SubscribeError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::ValidationError(_) => StatusCode::BAD_REQUEST,
-            Self::UnexpectedError(_, _) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -70,39 +71,25 @@ pub async fn subscribe(
 ) -> Result<HttpResponse, SubscribeError> {
     // Parse subscriber data and begin database transaction
     let new_subscriber = form.0.try_into().map_err(SubscribeError::ValidationError)?;
-    let mut transaction = db_pool.begin().await.map_err(|e| {
-        SubscribeError::UnexpectedError(
-            Box::new(e),
-            "Failed to acquire a Postgres connection from the pool".to_string(),
-        )
-    })?;
+    let mut transaction = db_pool
+        .begin()
+        .await
+        .context("Failed to acquire database connection to store a new subscriber")?;
 
     // Insert subscriber, generate and store a subscription token
     let subscriber_id = insert_subscriber(&new_subscriber, &mut transaction)
         .await
-        .map_err(|e| {
-            SubscribeError::UnexpectedError(
-                Box::new(e),
-                "Failed to insert new subscriber in the database".to_string(),
-            )
-        })?;
+        .context("Failed to insert new subscriber in the database")?;
     let subscription_token = generate_subscription_token();
     store_token(subscriber_id, &subscription_token, &mut transaction)
         .await
-        .map_err(|e| {
-            SubscribeError::UnexpectedError(
-                Box::new(e),
-                "Failed to store the confirmation token for a new subscriber".to_string(),
-            )
-        })?;
+        .context("Failed to store confirmation token in the database")?;
 
     // End database transaction and send confirmation email with subscription token
-    transaction.commit().await.map_err(|e| {
-        SubscribeError::UnexpectedError(
-            Box::new(e),
-            "Failed to commit SQL transaction to store a new subscriber".to_string(),
-        )
-    })?;
+    transaction
+        .commit()
+        .await
+        .context("Failed to commit SQL transaction to store a new subscriber")?;
     send_confirmation_email(
         &email_client,
         new_subscriber,
@@ -110,12 +97,7 @@ pub async fn subscribe(
         &subscription_token,
     )
     .await
-    .map_err(|e| {
-        SubscribeError::UnexpectedError(
-            Box::new(e),
-            "Failed to send a confirmation email".to_string(),
-        )
-    })?;
+    .context("Failed to send confirmation email")?;
 
     Ok(HttpResponse::Ok().finish())
 }
