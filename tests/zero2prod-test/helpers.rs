@@ -118,9 +118,10 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
 }
 
 /// Create an unconfirmed subscriber using the public API
-pub async fn create_unconfirmed_subscriber(app: &TestApp) {
+pub async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
+    // Build a scoped mock Postmark server
     let _mock_guard = Mock::given(path("/email"))
         .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
@@ -129,8 +130,31 @@ pub async fn create_unconfirmed_subscriber(app: &TestApp) {
         .mount_as_scoped(&app.email_server)
         .await;
 
+    // Subscribe to the newsletter using the API
     app.post_subscriptions(body.into())
         .await
+        .error_for_status()
+        .unwrap();
+
+    // Inspect the requests received by the mock server to retrieve the confirmation link and return it
+    let email_request = &app
+        .email_server
+        .received_requests()
+        .await
+        .unwrap()
+        .pop()
+        .unwrap();
+    app.get_confirmation_links(email_request)
+}
+
+pub async fn create_confirmed_subscriber(app: &TestApp) {
+    // Reuse the helper that creates an unconfirmed subscriber
+    let confirmation_link = create_unconfirmed_subscriber(app).await;
+
+    // Confirm subscription to the newsletter using the API
+    reqwest::get(confirmation_link.html_link)
+        .await
+        .unwrap()
         .error_for_status()
         .unwrap();
 }
