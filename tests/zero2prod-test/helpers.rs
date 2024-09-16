@@ -3,8 +3,8 @@ use std::{env, io, sync};
 use linkify::{LinkFinder, LinkKind};
 use reqwest::{Client, Url};
 use sqlx::PgPool;
-use wiremock::MockServer;
-
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -115,4 +115,22 @@ pub async fn spawn_app(db_pool: PgPool) -> TestApp {
         port,
         email_server,
     }
+}
+
+/// Create an unconfirmed subscriber using the public API
+pub async fn create_unconfirmed_subscriber(app: &TestApp) {
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    let _mock_guard = Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .named("Create unconfirmed subscriber")
+        .expect(1)
+        .mount_as_scoped(&app.email_server)
+        .await;
+
+    app.post_subscriptions(body.into())
+        .await
+        .error_for_status()
+        .unwrap();
 }
