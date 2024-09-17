@@ -21,15 +21,24 @@ impl AsRef<str> for EmailAddress {
     }
 }
 
+// TODO: implement TryFrom instead? https://rust-lang.github.io/rust-clippy/stable/index.html#/tryfrom
+impl From<String> for EmailAddress {
+    fn from(value: String) -> Self {
+        // TODO: handle edge case confirmed subscribers with invalid email addresses
+        Self::parse(value).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claim::assert_err;
     use fake::faker::internet::en::SafeEmail;
     use fake::Fake;
     use quickcheck::Gen;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
+
+    use super::*;
 
     #[test]
     fn empty_string_is_rejected() {

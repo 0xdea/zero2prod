@@ -1,8 +1,9 @@
+use std::fmt;
+
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use sqlx::PgPool;
-use std::fmt;
 use uuid::Uuid;
 
 use crate::routes::helpers::error_chain_fmt;

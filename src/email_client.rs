@@ -45,7 +45,7 @@ impl EmailClient {
     /// <https://postmarkapp.com/developer/user-guide/send-email-with-api>
     pub async fn send_email(
         &self,
-        to: EmailAddress,
+        to: &EmailAddress,
         subject: &str,
         html_body: &str,
         text_body: &str,
@@ -75,7 +75,6 @@ impl EmailClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use claim::{assert_err, assert_ok};
     use fake::faker::internet::en::Password;
     use fake::faker::internet::en::SafeEmail;
@@ -83,6 +82,8 @@ mod tests {
     use fake::Fake;
     use wiremock::matchers::{any, header, header_exists, method, path};
     use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+
+    use super::*;
 
     struct SendEmailBodyMatcher;
 
@@ -140,7 +141,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content(), &content())
+            .send_email(&email(), &subject(), &content(), &content())
             .await;
         assert_ok!(outcome);
     }
@@ -157,7 +158,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content(), &content())
+            .send_email(&email(), &subject(), &content(), &content())
             .await;
         assert_ok!(outcome);
     }
@@ -174,7 +175,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content(), &content())
+            .send_email(&email(), &subject(), &content(), &content())
             .await;
         assert_err!(outcome);
     }
@@ -191,7 +192,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content(), &content())
+            .send_email(&email(), &subject(), &content(), &content())
             .await;
         assert_err!(outcome);
     }

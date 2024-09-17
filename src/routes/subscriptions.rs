@@ -211,6 +211,6 @@ pub async fn send_confirmation_email(
     );
 
     email_client
-        .send_email(new_subscriber.email, "Welcome!", html_body, text_body)
+        .send_email(&new_subscriber.email, "Welcome!", html_body, text_body)
         .await
 }
