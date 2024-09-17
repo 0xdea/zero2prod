@@ -21,10 +21,10 @@ impl AsRef<str> for EmailAddress {
     }
 }
 
-// TODO: implement TryFrom instead? https://rust-lang.github.io/rust-clippy/stable/index.html#/tryfrom
+// TODO: handle edge case confirmed subscribers with invalid email addresses
+#[allow(clippy::fallible_impl_from)]
 impl From<String> for EmailAddress {
     fn from(value: String) -> Self {
-        // TODO: handle edge case confirmed subscribers with invalid email addresses
         Self::parse(value).unwrap()
     }
 }
