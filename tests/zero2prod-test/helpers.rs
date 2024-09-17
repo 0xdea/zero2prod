@@ -1,7 +1,7 @@
 use std::{env, io, sync};
 
 use linkify::{LinkFinder, LinkKind};
-use reqwest::{Client, Url};
+use reqwest::{get, Client, Url};
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -37,11 +37,46 @@ pub struct TestApp {
 
 /// Confirmation links
 pub struct ConfirmationLinks {
-    pub html_link: Url,
-    pub text_link: Url,
+    pub html: Url,
+    pub text: Url,
 }
 
 impl TestApp {
+    /// Spin up a test application and return its data
+    pub async fn spawn(db_pool: PgPool) -> Self {
+        // Initialize logging
+        sync::LazyLock::force(&TRACING);
+
+        // Launch a mock server to stand in for Postmark's API
+        let email_server = MockServer::start().await;
+
+        // Get settings and modify them for testing
+        let config = {
+            let mut c = get_config().expect("Failed to read configuration");
+            // Listen on a random TCP port
+            c.application.app_port = 0;
+            // Use the mock server as email API
+            c.email_client.base_url = email_server.uri();
+            c
+        };
+
+        // Build the application and get its address
+        let app = Application::build_with_db_pool(config, db_pool)
+            .await
+            .expect("Failed to build application");
+        let port = app.port();
+        let address = format!("http://127.0.0.1:{port}");
+
+        // Run the application and return its data
+        #[allow(clippy::let_underscore_future)]
+        let _ = tokio::spawn(app.run_until_stopped());
+        Self {
+            address,
+            port,
+            email_server,
+        }
+    }
+
     /// Perform a POST request to the subscriptions endpoint
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         Client::new()
@@ -76,85 +111,61 @@ impl TestApp {
         let html_link = get_link(body["HtmlBody"].as_str().unwrap());
         let text_link = get_link(body["TextBody"].as_str().unwrap());
         ConfirmationLinks {
-            html_link,
-            text_link,
+            html: html_link,
+            text: text_link,
         }
     }
-}
 
-/// Spin up a test application and return its data
-pub async fn spawn_app(db_pool: PgPool) -> TestApp {
-    // Initialize logging
-    sync::LazyLock::force(&TRACING);
+    /// Create an unconfirmed subscriber using the public API
+    pub async fn create_unconfirmed_subscriber(&self) -> ConfirmationLinks {
+        let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    // Launch a mock server to stand in for Postmark's API
-    let email_server = MockServer::start().await;
+        // Build a scoped mock Postmark server
+        let _mock_guard = Mock::given(path("/email"))
+            .and(method("POST"))
+            .respond_with(ResponseTemplate::new(200))
+            .named("Create unconfirmed subscriber")
+            .expect(1)
+            .mount_as_scoped(&self.email_server)
+            .await;
 
-    // Get settings and modify them for testing
-    let config = {
-        let mut c = get_config().expect("Failed to read configuration");
-        // Listen on a random TCP port
-        c.application.app_port = 0;
-        // Use the mock server as email API
-        c.email_client.base_url = email_server.uri();
-        c
-    };
+        // Subscribe to the newsletter using the API
+        self.post_subscriptions(body.into())
+            .await
+            .error_for_status()
+            .unwrap();
 
-    // Build the application and get its address
-    let app = Application::build_with_db_pool(config, db_pool)
-        .await
-        .expect("Failed to build application");
-    let port = app.port();
-    let address = format!("http://127.0.0.1:{port}");
-
-    // Run the application and return its data
-    #[allow(clippy::let_underscore_future)]
-    let _ = tokio::spawn(app.run_until_stopped());
-    TestApp {
-        address,
-        port,
-        email_server,
+        // Inspect the requests received by the mock server to retrieve the confirmation link and return it
+        let email_request = &self
+            .email_server
+            .received_requests()
+            .await
+            .unwrap()
+            .pop()
+            .unwrap();
+        self.get_confirmation_links(email_request)
     }
-}
 
-/// Create an unconfirmed subscriber using the public API
-pub async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    /// Create a confirmed subscriber using the public API
+    pub async fn create_confirmed_subscriber(&self) {
+        // Reuse the helper that creates an unconfirmed subscriber
+        let confirmation_link = self.create_unconfirmed_subscriber().await;
 
-    // Build a scoped mock Postmark server
-    let _mock_guard = Mock::given(path("/email"))
-        .and(method("POST"))
-        .respond_with(ResponseTemplate::new(200))
-        .named("Create unconfirmed subscriber")
-        .expect(1)
-        .mount_as_scoped(&app.email_server)
-        .await;
+        // Confirm subscription to the newsletter using the API
+        get(confirmation_link.html)
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap();
+    }
 
-    // Subscribe to the newsletter using the API
-    app.post_subscriptions(body.into())
-        .await
-        .error_for_status()
-        .unwrap();
-
-    // Inspect the requests received by the mock server to retrieve the confirmation link and return it
-    let email_request = &app
-        .email_server
-        .received_requests()
-        .await
-        .unwrap()
-        .pop()
-        .unwrap();
-    app.get_confirmation_links(email_request)
-}
-
-pub async fn create_confirmed_subscriber(app: &TestApp) {
-    // Reuse the helper that creates an unconfirmed subscriber
-    let confirmation_link = create_unconfirmed_subscriber(app).await;
-
-    // Confirm subscription to the newsletter using the API
-    reqwest::get(confirmation_link.html_link)
-        .await
-        .unwrap()
-        .error_for_status()
-        .unwrap();
+    /// POST to the newsletters endpoint
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        Client::new()
+            .post(format!("{}/newsletters", &self.address))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
 }

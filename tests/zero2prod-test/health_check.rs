@@ -1,11 +1,11 @@
 use reqwest::Client;
 use sqlx::PgPool;
 
-use crate::helpers::spawn_app;
+use crate::helpers::TestApp;
 
 #[sqlx::test]
 async fn health_check_works(db_pool: PgPool) {
-    let app = spawn_app(db_pool).await;
+    let app = TestApp::spawn(db_pool).await;
 
     let response = Client::new()
         .get(format!("{}/health_check", &app.address))

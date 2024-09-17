@@ -1,5 +1,5 @@
 mod health_check;
 mod helpers;
-mod newsletter;
+mod newsletters;
 mod subscriptions;
 mod subscriptions_confirm;

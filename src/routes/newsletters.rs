@@ -1,7 +1,20 @@
-use actix_web::HttpResponse;
+use actix_web::{web, HttpResponse};
 
-/// Newsletters handler
-pub async fn newsletters() -> HttpResponse {
-    // TODO: Publish newsletter
+/// Newsletter data
+#[derive(serde::Deserialize)]
+pub struct NewsletterData {
+    title: String,
+    content: Content,
+}
+
+/// Newsletter content
+#[derive(serde::Deserialize)]
+pub struct Content {
+    html: String,
+    text: String,
+}
+
+/// Newsletters handler to publish newsletters
+pub async fn newsletters(_newsletter: web::Json<NewsletterData>) -> HttpResponse {
     HttpResponse::Ok().finish()
 }
