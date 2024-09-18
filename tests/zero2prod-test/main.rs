@@ -1,4 +1,4 @@
-mod health_check;
+mod healthcheck;
 mod helpers;
 mod newsletters;
 mod subscriptions;

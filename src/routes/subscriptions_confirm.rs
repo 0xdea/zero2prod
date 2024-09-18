@@ -38,7 +38,7 @@ impl ResponseError for ConfirmError {
     }
 }
 
-/// Confirmation handler
+/// Subscription confirmation handler
 // TODO: What happens if a user clicks on a confirmation link twice?
 #[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
 pub async fn subscriptions_confirm(
