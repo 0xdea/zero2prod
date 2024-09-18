@@ -21,14 +21,6 @@ impl AsRef<str> for EmailAddress {
     }
 }
 
-// TODO: handle edge case confirmed subscribers with invalid email addresses
-#[allow(clippy::fallible_impl_from)]
-impl From<String> for EmailAddress {
-    fn from(value: String) -> Self {
-        Self::parse(value).unwrap()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use claim::assert_err;
