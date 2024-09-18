@@ -90,35 +90,25 @@ pub async fn newsletters(
     Ok(HttpResponse::Ok().finish())
 }
 
-/// Get the list of confirmed subscribers
+/// Get the list of confirmed subscribers with valid email addresses
 #[tracing::instrument(name = "Get confirmed subscribers", skip(db_pool))]
 async fn get_confirmed_subscribers(
     db_pool: &PgPool,
 ) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
-    // Row type to map the data coming out of the SQL query below
-    struct Row {
-        email: String,
-    }
-
-    // Query the database
-    let rows = sqlx::query_as!(
-        Row,
+    let confirmed_subscribers = sqlx::query!(
         r"
         SELECT email FROM subscriptions
         WHERE status = 'confirmed'
         "
     )
     .fetch_all(db_pool)
-    .await?;
-
-    // Map into the domain type, returning an error if a subscriber has an invalid email address
-    let confirmed_subscribers = rows
-        .into_iter()
-        .map(|row| match EmailAddress::parse(row.email) {
-            Ok(email) => Ok(ConfirmedSubscriber { email }),
-            Err(error) => Err(anyhow::anyhow!(error)),
-        })
-        .collect();
+    .await?
+    .into_iter()
+    .map(|row| match EmailAddress::parse(row.email) {
+        Ok(email) => Ok(ConfirmedSubscriber { email }),
+        Err(error) => Err(anyhow::anyhow!(error)),
+    })
+    .collect();
 
     Ok(confirmed_subscribers)
 }
