@@ -79,7 +79,7 @@ async fn subscribe_returns_a_400_when_fields_are_present_but_empty(db_pool: PgPo
         assert_eq!(
             response.status(),
             400,
-            "The API did not return a 400 Bad Request when the payload was {description}",
+            "The API did not return a 400 Bad Request when the payload was {description}"
         );
     }
 }

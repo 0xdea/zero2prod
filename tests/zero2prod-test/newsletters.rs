@@ -67,8 +67,10 @@ async fn newsletters_returns_400_for_invalid_data(db_pool: PgPool) {
         ),
     ];
 
+    #[allow(unused_variables)]
     for (body, description) in test_cases {
         let response = app.post_newsletters(body).await;
+
         assert_eq!(
             response.status(),
             400,

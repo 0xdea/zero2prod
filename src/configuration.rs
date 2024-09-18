@@ -2,7 +2,7 @@ use std::{env, time};
 
 use config::{Config, ConfigError, Environment, File};
 use reqwest::Url;
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
 use tracing::log::LevelFilter;
@@ -30,7 +30,7 @@ pub struct ApplicationSettings {
 #[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
     username: String,
-    password: Secret<String>,
+    password: SecretBox<String>,
     host: String,
     port: u16,
     database: String,
@@ -38,20 +38,6 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
-    //noinspection ALL
-    /// Generate connection string from database settings (does not support SSL mode)
-    #[deprecated(since = "0.1.1", note = "use `db_options` instead")]
-    pub fn db_url(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port,
-            self.database
-        ))
-    }
-
     /// Generate options and flags that can be used to configure a database connection
     pub fn db_options(&self) -> PgConnectOptions {
         let ssl_mode = if self.require_ssl {
@@ -75,7 +61,7 @@ impl DatabaseSettings {
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
-    pub authorization_token: Secret<String>,
+    pub authorization_token: SecretBox<String>,
     pub timeout_millis: u64,
 }
 

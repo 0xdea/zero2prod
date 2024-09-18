@@ -1,6 +1,6 @@
 [package]
 name = "zero2prod"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>", "Luca Palmieri <rust@lpalmieri.com"]
 edition = "2021"
 description = "My code for \"Zero To Production In Rust\", a book by Luca Palmieri on API development using Rust."
@@ -23,7 +23,7 @@ tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
 tracing-log = "0.2"
 tracing-actix-web = "0.7"
-secrecy = { version = "0.8", features = ["serde"] }
+secrecy = { version = "0.10", features = ["serde"] }
 validator = "0.18"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 url = "2.5"

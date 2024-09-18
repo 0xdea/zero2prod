@@ -41,10 +41,10 @@ impl Application {
             .sender_email()
             .expect("Invalid sender email address");
         let email_client = EmailClient::new(
+            config.email_client.timeout(),
             base_url,
             sender_email,
-            config.email_client.authorization_token.clone(),
-            config.email_client.timeout(),
+            config.email_client.authorization_token,
         );
 
         // Run the HTTP server and return its data
