@@ -60,20 +60,30 @@ pub async fn newsletters(
 
     // Send the newsletter issue to each subscriber
     for subscriber in subscribers {
-        email_client
-            .send_email(
-                &subscriber.email,
-                &newsletter.title,
-                &newsletter.content.html,
-                &newsletter.content.text,
-            )
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to send newsletter issue to {}",
-                    subscriber.email.as_ref()
-                )
-            })?;
+        match subscriber {
+            Ok(subscriber) => {
+                email_client
+                    .send_email(
+                        &subscriber.email,
+                        &newsletter.title,
+                        &newsletter.content.html,
+                        &newsletter.content.text,
+                    )
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "Failed to send newsletter issue to {}",
+                            subscriber.email.as_ref()
+                        )
+                    })?;
+            }
+            Err(error) => {
+                tracing::warn!(
+                error.cause_chain = ?error,
+                "Skipping a confirmed subscriber because their stored contact details are invalid",
+                );
+            }
+        }
     }
 
     Ok(HttpResponse::Ok().finish())
@@ -83,7 +93,7 @@ pub async fn newsletters(
 #[tracing::instrument(name = "Get confirmed subscribers", skip(db_pool))]
 async fn get_confirmed_subscribers(
     db_pool: &PgPool,
-) -> Result<Vec<ConfirmedSubscriber>, anyhow::Error> {
+) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
     // Row type to map the data coming out of the SQL query below
     struct Row {
         email: String,
@@ -103,12 +113,9 @@ async fn get_confirmed_subscribers(
     // Map into the domain type, handling the edge case in which a subscriber has an invalid email address
     let confirmed_subscribers = rows
         .into_iter()
-        .filter_map(|row| match EmailAddress::parse(row.email) {
-            Ok(email) => Some(ConfirmedSubscriber { email }),
-            Err(error) => {
-                tracing::warn!("A confirmed subscriber is using an invalid email address\n{error}");
-                None
-            }
+        .map(|row| match EmailAddress::parse(row.email) {
+            Ok(email) => Ok(ConfirmedSubscriber { email }),
+            Err(error) => Err(anyhow::anyhow!(error)),
         })
         .collect();
 
