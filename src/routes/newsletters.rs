@@ -43,6 +43,7 @@ impl fmt::Debug for PublishError {
 
 impl ResponseError for PublishError {
     fn status_code(&self) -> StatusCode {
+        // TODO: add match arms
         match self {
             Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -58,7 +59,7 @@ pub async fn newsletters(
     // Get the list of subscribers
     let subscribers = get_confirmed_subscribers(&db_pool).await?;
 
-    // Send the newsletter issue to each subscriber
+    // Send newsletter issue to each subscriber, handling errors and edge cases
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {
@@ -110,7 +111,7 @@ async fn get_confirmed_subscribers(
     .fetch_all(db_pool)
     .await?;
 
-    // Map into the domain type, handling the edge case in which a subscriber has an invalid email address
+    // Map into the domain type, returning an error if a subscriber has an invalid email address
     let confirmed_subscribers = rows
         .into_iter()
         .map(|row| match EmailAddress::parse(row.email) {
