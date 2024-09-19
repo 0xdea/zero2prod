@@ -1,6 +1,6 @@
 use std::time;
 
-use reqwest::{Client, Url};
+use reqwest::Url;
 use secrecy::{ExposeSecret, SecretBox};
 
 use crate::domain::EmailAddress;
@@ -18,7 +18,7 @@ struct SendEmailRequest<'a> {
 
 /// Email client data
 pub struct EmailClient {
-    http_client: Client,
+    http_client: reqwest::Client,
     base_url: Url,
     sender: EmailAddress,
     authorization_token: SecretBox<String>,
@@ -32,7 +32,7 @@ impl EmailClient {
         sender: EmailAddress,
         authorization_token: SecretBox<String>,
     ) -> Self {
-        let http_client = Client::builder().timeout(timeout).build().unwrap();
+        let http_client = reqwest::Client::builder().timeout(timeout).build().unwrap();
         Self {
             http_client,
             base_url,

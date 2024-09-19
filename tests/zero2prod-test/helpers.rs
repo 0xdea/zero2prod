@@ -1,10 +1,11 @@
 use std::{env, io, sync};
 
 use linkify::{LinkFinder, LinkKind};
-use reqwest::{get, Client, Url};
+use reqwest::Url;
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
 use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -79,13 +80,13 @@ impl TestApp {
 
     /// Perform a POST request to the subscriptions endpoint
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
-        Client::new()
+        reqwest::Client::new()
             .post(format!("{}/subscriptions", &self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
             .send()
             .await
-            .expect("Failed to execute request")
+            .expect("Failed to send request")
     }
 
     /// Extract confirmation links embedded in the request to the email API
@@ -152,7 +153,7 @@ impl TestApp {
         let confirmation_link = self.create_unconfirmed_subscriber().await;
 
         // Confirm subscription to the newsletter using the API
-        get(confirmation_link.html)
+        reqwest::get(confirmation_link.html)
             .await
             .unwrap()
             .error_for_status()
@@ -161,11 +162,11 @@ impl TestApp {
 
     /// POST to the newsletters endpoint
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        Client::new()
+        reqwest::Client::new()
             .post(format!("{}/newsletters", &self.address))
             .json(&body)
             .send()
             .await
-            .expect("Failed to execute request")
+            .expect("Failed to send request")
     }
 }

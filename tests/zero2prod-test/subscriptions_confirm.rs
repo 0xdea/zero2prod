@@ -1,4 +1,3 @@
-use reqwest::get;
 use sqlx::PgPool;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -9,7 +8,7 @@ use crate::helpers::TestApp;
 async fn confirmations_without_token_are_rejected_with_a_400(db_pool: PgPool) {
     let app = TestApp::spawn(db_pool).await;
 
-    let response = get(&format!("{}/subscriptions/confirm", app.address))
+    let response = reqwest::get(&format!("{}/subscriptions/confirm", app.address))
         .await
         .unwrap();
 
@@ -32,7 +31,7 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool)
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
     let confirmation_links = app.get_confirmation_links(email_request);
 
-    let response = get(confirmation_links.html).await.unwrap();
+    let response = reqwest::get(confirmation_links.html).await.unwrap();
 
     assert_eq!(response.status(), 200);
 }
@@ -52,7 +51,7 @@ async fn clicking_on_the_confirmation_link_confirms_a_subscriber(db_pool: PgPool
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
     let confirmation_links = app.get_confirmation_links(email_request);
 
-    get(confirmation_links.html)
+    reqwest::get(confirmation_links.html)
         .await
         .unwrap()
         .error_for_status()

@@ -78,3 +78,27 @@ async fn newsletters_returns_400_for_invalid_data(db_pool: PgPool) {
         );
     }
 }
+
+#[sqlx::test]
+async fn requests_missing_authorization_are_rejected(db_pool: PgPool) {
+    let app = TestApp::spawn(db_pool).await;
+
+    let response = reqwest::Client::new()
+        .post(format!("{}/newsletters", app.address))
+        .json(&serde_json::json!({
+            "title": "Newsletter title",
+            "content": {
+                "text": "Newsletter body as plain text",
+                "html": "<p>Newsletter body as HTML</p>",
+            }
+        }))
+        .send()
+        .await
+        .expect("Failed to send request");
+
+    assert_eq!(response.status(), 401);
+    assert_eq!(
+        response.headers()["WWW-Authenticate"],
+        r#"Basic realm="newsletters""#
+    );
+}
