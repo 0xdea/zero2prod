@@ -1,8 +1,12 @@
 use std::fmt;
 
+use actix_web::http::header::HeaderMap;
 use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse, ResponseError};
+use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::Context;
+use base64::engine::general_purpose;
+use base64::Engine;
+use secrecy::SecretBox;
 use sqlx::PgPool;
 
 use crate::domain::EmailAddress;
@@ -31,6 +35,8 @@ struct ConfirmedSubscriber {
 /// Publish error type
 #[derive(thiserror::Error)]
 pub enum PublishError {
+    #[error("Authentication failed")]
+    AuthError(#[source] anyhow::Error),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -43,11 +49,17 @@ impl fmt::Debug for PublishError {
 
 impl ResponseError for PublishError {
     fn status_code(&self) -> StatusCode {
-        // TODO: add match arms
         match self {
+            Self::AuthError(_) => StatusCode::UNAUTHORIZED,
             Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
+}
+
+/// Authentication credentials data
+struct Credentials {
+    username: String,
+    password: SecretBox<String>,
 }
 
 /// Newsletters handler to send newsletter issues
@@ -55,7 +67,11 @@ pub async fn newsletters(
     newsletter: web::Json<NewsletterData>,
     db_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
+    request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
+    // Extract authentication credentials
+    let _creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
+
     // Get the list of subscribers
     let subscribers = get_confirmed_subscribers(&db_pool).await?;
 
@@ -111,4 +127,38 @@ async fn get_confirmed_subscribers(
     .collect();
 
     Ok(confirmed_subscribers)
+}
+
+/// Basic authentication credential extractor
+fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
+    // Extract the credential string from HTTP headers
+    let header_val = headers
+        .get("Authorization")
+        .context("The 'Authorization' header was not found")?
+        .to_str()
+        .context("The 'Authorization' header contains invalid characters")?;
+    let encoded_str = header_val
+        .strip_prefix("Basic ")
+        .context("The authorization scheme was not 'Basic'")?;
+    let decoded_bytes = general_purpose::STANDARD
+        .decode(encoded_str)
+        .context("Failed to decode the credential string")?;
+    let decoded_str = String::from_utf8(decoded_bytes)
+        .context("The decoded credential string was not valid UTF-8")?;
+
+    // Extract username and password from the decoded credential string
+    let mut creds = decoded_str.splitn(2, ':');
+    let username = creds
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("A username must be provided in 'Basic' auth"))?
+        .to_string();
+    let password = creds
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("A password must be provided in 'Basic' auth"))?
+        .to_string();
+
+    Ok(Credentials {
+        username,
+        password: SecretBox::from(Box::new(password)),
+    })
 }

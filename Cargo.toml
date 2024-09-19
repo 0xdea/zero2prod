@@ -30,6 +30,7 @@ url = "2.5"
 rand = { version = "0.8", features = ["std_rng"] }
 thiserror = "1"
 anyhow = "1"
+base64 = "0.22"
 
 [dependencies.sqlx]
 version = "0.8"
