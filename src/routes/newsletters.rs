@@ -1,17 +1,16 @@
 use std::fmt;
 
-use actix_web::http::header::HeaderMap;
-use actix_web::http::StatusCode;
+use crate::domain::EmailAddress;
+use crate::email_client::EmailClient;
+use crate::routes::helpers::error_chain_fmt;
+use actix_web::http::header::{HeaderMap, HeaderValue};
+use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::Context;
 use base64::engine::general_purpose;
 use base64::Engine;
 use secrecy::SecretBox;
 use sqlx::PgPool;
-
-use crate::domain::EmailAddress;
-use crate::email_client::EmailClient;
-use crate::routes::helpers::error_chain_fmt;
 
 /// Newsletter data
 #[derive(serde::Deserialize)]
@@ -48,10 +47,17 @@ impl fmt::Debug for PublishError {
 }
 
 impl ResponseError for PublishError {
-    fn status_code(&self) -> StatusCode {
+    fn error_response(&self) -> HttpResponse {
         match self {
-            Self::AuthError(_) => StatusCode::UNAUTHORIZED,
-            Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::AuthError(_) => {
+                let mut response = HttpResponse::new(StatusCode::UNAUTHORIZED);
+                let header_val = HeaderValue::from_str(r#"Basic realm="newsletters""#).unwrap();
+                response
+                    .headers_mut()
+                    .insert(header::WWW_AUTHENTICATE, header_val);
+                response
+            }
+            Self::UnexpectedError(_) => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
         }
     }
 }

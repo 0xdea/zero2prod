@@ -1,5 +1,7 @@
 use std::{env, io, sync};
 
+use fake::faker::internet::en::{Password, Username};
+use fake::Fake;
 use linkify::{LinkFinder, LinkKind};
 use reqwest::Url;
 use sqlx::PgPool;
@@ -164,6 +166,10 @@ impl TestApp {
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
         reqwest::Client::new()
             .post(format!("{}/newsletters", &self.address))
+            .basic_auth(
+                Username().fake::<String>(),
+                Some(Password(32..33).fake::<String>()),
+            )
             .json(&body)
             .send()
             .await
