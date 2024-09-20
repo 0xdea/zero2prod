@@ -4,11 +4,14 @@ use fake::faker::internet::en::{Password, Username};
 use fake::Fake;
 use linkify::{LinkFinder, LinkKind};
 use reqwest::Url;
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
+use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use zero2prod::configuration::get_config;
+use zero2prod::routes::Credentials;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -36,6 +39,7 @@ pub struct TestApp {
     pub address: String,
     pub port: u16,
     pub email_server: MockServer,
+    pub creds: Credentials,
 }
 
 /// Confirmation links
@@ -63,6 +67,9 @@ impl TestApp {
             c
         };
 
+        // Add test user
+        let creds = add_test_user(&db_pool).await;
+
         // Build the application and get its address
         let app = Application::build_with_db_pool(config, db_pool)
             .await
@@ -77,6 +84,7 @@ impl TestApp {
             address,
             port,
             email_server,
+            creds,
         }
     }
 
@@ -92,7 +100,7 @@ impl TestApp {
     }
 
     /// Extract confirmation links embedded in the request to the email API
-    pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
+    pub fn confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         // Parse the request body as JSON
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 
@@ -146,7 +154,7 @@ impl TestApp {
             .unwrap()
             .pop()
             .unwrap();
-        self.get_confirmation_links(email_request)
+        self.confirmation_links(email_request)
     }
 
     /// Create a confirmed subscriber using the public API
@@ -164,15 +172,43 @@ impl TestApp {
 
     /// POST to the newsletters endpoint
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let (username, password) = self.test_user();
         reqwest::Client::new()
             .post(format!("{}/newsletters", &self.address))
-            .basic_auth(
-                Username().fake::<String>(),
-                Some(Password(32..33).fake::<String>()),
-            )
+            .basic_auth(username, Some(password))
             .json(&body)
             .send()
             .await
             .expect("Failed to send request")
+    }
+
+    /// Get username and password for the test app
+    pub fn test_user(&self) -> (String, String) {
+        (
+            self.creds.username.to_string(),
+            self.creds.password.expose_secret().to_string(),
+        )
+    }
+}
+
+/// Add test user to the database and return its credentials
+async fn add_test_user(db_pool: &PgPool) -> Credentials {
+    let username = Username().fake::<String>();
+    let password = Password(32..33).fake::<String>();
+
+    sqlx::query!(
+        "INSERT INTO users (user_id, username, password)\
+        VALUES ($1, $2, $3)",
+        Uuid::new_v4(),
+        username,
+        password,
+    )
+    .execute(db_pool)
+    .await
+    .expect("Failed to add test user");
+
+    Credentials {
+        username,
+        password: SecretBox::from(Box::new(password)),
     }
 }

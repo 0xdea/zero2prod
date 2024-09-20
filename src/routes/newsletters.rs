@@ -9,7 +9,7 @@ use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::Context;
 use base64::engine::general_purpose;
 use base64::Engine;
-use secrecy::SecretBox;
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
 
 /// Newsletter data
@@ -63,12 +63,17 @@ impl ResponseError for PublishError {
 }
 
 /// Authentication credentials data
-struct Credentials {
-    username: String,
-    password: SecretBox<String>,
+pub struct Credentials {
+    pub username: String,
+    pub password: SecretBox<String>,
 }
 
 /// Newsletters handler to send newsletter issues
+#[tracing::instrument(
+    name = "Publish a newsletter issue",
+    skip(newsletter, db_pool, email_client, request),
+    fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
+)]
 pub async fn newsletters(
     newsletter: web::Json<NewsletterData>,
     db_pool: web::Data<PgPool>,
@@ -76,7 +81,12 @@ pub async fn newsletters(
     request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
     // Extract authentication credentials
-    let _creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
+    let creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
+    tracing::Span::current().record("username", tracing::field::display(&creds.username));
+
+    // Extract corresponding user_id if credentials are valid
+    let user_id = validate_creds(creds, &db_pool).await?;
+    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
 
     // Get the list of subscribers
     let subscribers = get_confirmed_subscribers(&db_pool).await?;
@@ -167,4 +177,24 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
         username,
         password: SecretBox::from(Box::new(password)),
     })
+}
+
+/// Validate provided authentication credentials
+async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uuid, PublishError> {
+    let row: Option<_> = sqlx::query!(
+        r#"
+        SELECT user_id
+        FROM users
+        WHERE username = $1 AND password = $2
+        "#,
+        creds.username,
+        creds.password.expose_secret()
+    )
+    .fetch_optional(db_pool)
+    .await
+    .context("Failed to perform a query to validate auth credentials")
+    .map_err(PublishError::UnexpectedError)?;
+
+    row.map(|row| row.user_id)
+        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Invalid username or password")))
 }
