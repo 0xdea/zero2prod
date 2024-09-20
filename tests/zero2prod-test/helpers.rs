@@ -4,14 +4,13 @@ use fake::faker::internet::en::{Password, Username};
 use fake::Fake;
 use linkify::{LinkFinder, LinkKind};
 use reqwest::Url;
-use secrecy::{ExposeSecret, SecretBox};
+use sha3::{Digest, Sha3_256};
 use sqlx::PgPool;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use zero2prod::configuration::get_config;
-use zero2prod::routes::Credentials;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -34,18 +33,18 @@ static TRACING: sync::LazyLock<()> = sync::LazyLock::new(|| {
     };
 });
 
+/// Confirmation links
+pub struct ConfirmationLinks {
+    pub html: Url,
+    pub text: Url,
+}
+
 /// Test application data
 pub struct TestApp {
     pub address: String,
     pub port: u16,
     pub email_server: MockServer,
-    pub creds: Credentials,
-}
-
-/// Confirmation links
-pub struct ConfirmationLinks {
-    pub html: Url,
-    pub text: Url,
+    pub test_user: TestUser,
 }
 
 impl TestApp {
@@ -68,7 +67,8 @@ impl TestApp {
         };
 
         // Add test user
-        let creds = add_test_user(&db_pool).await;
+        let test_user = TestUser::generate();
+        test_user.store(&db_pool).await;
 
         // Build the application and get its address
         let app = Application::build_with_db_pool(config, db_pool)
@@ -84,7 +84,7 @@ impl TestApp {
             address,
             port,
             email_server,
-            creds,
+            test_user,
         }
     }
 
@@ -172,43 +172,47 @@ impl TestApp {
 
     /// POST to the newsletters endpoint
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        let (username, password) = self.test_user();
         reqwest::Client::new()
             .post(format!("{}/newsletters", &self.address))
-            .basic_auth(username, Some(password))
+            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
             .await
             .expect("Failed to send request")
     }
-
-    /// Get username and password for the test app
-    pub fn test_user(&self) -> (String, String) {
-        (
-            self.creds.username.to_string(),
-            self.creds.password.expose_secret().to_string(),
-        )
-    }
 }
 
-/// Add test user to the database and return its credentials
-async fn add_test_user(db_pool: &PgPool) -> Credentials {
-    let username = Username().fake::<String>();
-    let password = Password(32..33).fake::<String>();
+/// Test user data
+pub struct TestUser {
+    user_id: Uuid,
+    username: String,
+    password: String,
+}
 
-    sqlx::query!(
-        "INSERT INTO users (user_id, username, password)\
-        VALUES ($1, $2, $3)",
-        Uuid::new_v4(),
-        username,
-        password,
-    )
-    .execute(db_pool)
-    .await
-    .expect("Failed to add test user");
+impl TestUser {
+    /// Generate new test user id and authentication credentials
+    pub fn generate() -> Self {
+        Self {
+            user_id: Uuid::new_v4(),
+            username: Username().fake(),
+            password: Password(32..33).fake(),
+        }
+    }
 
-    Credentials {
-        username,
-        password: SecretBox::from(Box::new(password)),
+    /// Store test user data in the database
+    async fn store(&self, db_pool: &PgPool) {
+        let password_hash = Sha3_256::digest(self.password.as_bytes());
+        sqlx::query!(
+            r#"
+            INSERT INTO users (user_id, username, password_hash)
+            VALUES ($1, $2, $3)
+            "#,
+            self.user_id,
+            self.username,
+            format!("{password_hash:x}")
+        )
+        .execute(db_pool)
+        .await
+        .expect("Failed to store test user in the database");
     }
 }

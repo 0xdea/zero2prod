@@ -1,17 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT user_id\n        FROM users\n        WHERE username = $1 AND password = $2\n        ",
+  "query": "\n        SELECT subscriber_id\n        FROM subscription_tokens\n        WHERE subscription_token = $1\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "user_id",
+        "name": "subscriber_id",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
         "Text"
       ]
     },
@@ -19,5 +18,5 @@
       false
     ]
   },
-  "hash": "df5e51c3cbb40ab0f1b52e123a54537961d7390f1edff007b9c12c23c8e3735f"
+  "hash": "4e9dd354d67a617ea26df8ae1b9fcd7b3e6583b3bab6a6961a05b8ec52ce64b7"
 }

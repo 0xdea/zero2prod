@@ -70,8 +70,12 @@ pub async fn get_subscriber_id_from_token(
     db_pool: &PgPool,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     let result = sqlx::query!(
-        r#"SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"#,
-        subscription_token,
+        r#"
+        SELECT subscriber_id
+        FROM subscription_tokens
+        WHERE subscription_token = $1
+        "#,
+        subscription_token
     )
     .fetch_optional(db_pool)
     .await?;
@@ -83,8 +87,12 @@ pub async fn get_subscriber_id_from_token(
 #[tracing::instrument(name = "Marking subscriber as confirmed", skip(subscriber_id, db_pool))]
 pub async fn confirm_subscriber(subscriber_id: Uuid, db_pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        r#"UPDATE subscriptions SET status = 'confirmed' WHERE id = $1"#,
-        subscriber_id,
+        r#"
+        UPDATE subscriptions
+        SET status = 'confirmed'
+        WHERE id = $1
+        "#,
+        subscriber_id
     )
     .execute(db_pool)
     .await?;

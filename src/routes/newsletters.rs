@@ -1,8 +1,5 @@
 use std::fmt;
 
-use crate::domain::EmailAddress;
-use crate::email_client::EmailClient;
-use crate::routes::helpers::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
@@ -10,7 +7,12 @@ use anyhow::Context;
 use base64::engine::general_purpose;
 use base64::Engine;
 use secrecy::{ExposeSecret, SecretBox};
+use sha3::{Digest, Sha3_256};
 use sqlx::PgPool;
+
+use crate::domain::EmailAddress;
+use crate::email_client::EmailClient;
+use crate::routes::helpers::error_chain_fmt;
 
 /// Newsletter data
 #[derive(serde::Deserialize)]
@@ -63,9 +65,9 @@ impl ResponseError for PublishError {
 }
 
 /// Authentication credentials data
-pub struct Credentials {
-    pub username: String,
-    pub password: SecretBox<String>,
+struct Credentials {
+    username: String,
+    password: SecretBox<String>,
 }
 
 /// Newsletters handler to send newsletter issues
@@ -128,10 +130,10 @@ async fn get_confirmed_subscribers(
     db_pool: &PgPool,
 ) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
     let confirmed_subscribers = sqlx::query!(
-        r"
+        r#"
         SELECT email FROM subscriptions
         WHERE status = 'confirmed'
-        "
+        "#
     )
     .fetch_all(db_pool)
     .await?
@@ -181,14 +183,15 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
 
 /// Validate provided authentication credentials
 async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uuid, PublishError> {
+    let password_hash = Sha3_256::digest(creds.password.expose_secret().as_bytes());
     let row: Option<_> = sqlx::query!(
         r#"
         SELECT user_id
         FROM users
-        WHERE username = $1 AND password = $2
+        WHERE username = $1 AND password_hash = $2
         "#,
         creds.username,
-        creds.password.expose_secret()
+        format!("{password_hash:x}")
     )
     .fetch_optional(db_pool)
     .await

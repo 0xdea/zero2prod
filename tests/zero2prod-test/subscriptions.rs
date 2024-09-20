@@ -33,10 +33,15 @@ async fn subscribe_persists_the_new_subscriber(db_pool: PgPool) {
 
     app.post_subscriptions(body.into()).await;
 
-    let saved = sqlx::query!("SELECT email, name, status FROM subscriptions")
-        .fetch_one(&db_pool)
-        .await
-        .expect("Failed to fetch saved subscription");
+    let saved = sqlx::query!(
+        r#"
+        SELECT email, name, status
+        FROM subscriptions
+        "#
+    )
+    .fetch_one(&db_pool)
+    .await
+    .expect("Failed to fetch saved subscription");
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
     assert_eq!(saved.status, "pending_confirmation");
@@ -122,10 +127,15 @@ async fn subscribe_fails_if_there_is_a_fatal_database_error(db_pool: PgPool) {
     let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    sqlx::query!("ALTER TABLE subscriptions DROP COLUMN email;",)
-        .execute(&db_pool)
-        .await
-        .unwrap();
+    sqlx::query!(
+        r#"
+        ALTER TABLE subscriptions
+        DROP COLUMN email;
+        "#
+    )
+    .execute(&db_pool)
+    .await
+    .unwrap();
 
     let response = app.post_subscriptions(body.into()).await;
 
