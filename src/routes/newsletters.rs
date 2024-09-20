@@ -4,10 +4,10 @@ use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::Context;
+use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use base64::engine::general_purpose;
 use base64::Engine;
 use secrecy::{ExposeSecret, SecretBox};
-use sha3::{Digest, Sha3_256};
 use sqlx::PgPool;
 
 use crate::domain::EmailAddress;
@@ -183,21 +183,46 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
 
 /// Validate provided authentication credentials
 async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uuid, PublishError> {
-    let password_hash = Sha3_256::digest(creds.password.expose_secret().as_bytes());
+    // Create a new Argon2 context
+    let hasher = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(15_000, 2, 1, None)
+            .context("Failed to build hashing parameters")
+            .map_err(PublishError::UnexpectedError)?,
+    );
+
+    // Query the database and extract stored authentication credentials
     let row: Option<_> = sqlx::query!(
         r#"
-        SELECT user_id
+        SELECT user_id, password_hash, salt
         FROM users
-        WHERE username = $1 AND password_hash = $2
+        WHERE username = $1
         "#,
-        creds.username,
-        format!("{password_hash:x}")
+        creds.username
     )
     .fetch_optional(db_pool)
     .await
     .context("Failed to perform a query to validate auth credentials")
     .map_err(PublishError::UnexpectedError)?;
 
-    row.map(|row| row.user_id)
-        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Invalid username or password")))
+    let (stored_password_hash, user_id, salt) = match row {
+        Some(row) => (row.password_hash, row.user_id, row.salt),
+        None => {
+            return Err(PublishError::AuthError(anyhow::anyhow!("Unknown username")));
+        }
+    };
+
+    // Compare computed and stored password hashes
+    let password_hash = hasher
+        .hash_password(creds.password.expose_secret().as_bytes(), &salt)
+        .context("Failed to hash password")
+        .map_err(PublishError::UnexpectedError)?;
+    let password_hash = format!("{:x}", password_hash.hash.unwrap());
+
+    if password_hash != stored_password_hash {
+        Err(PublishError::AuthError(anyhow::anyhow!("Invalid password")))
+    } else {
+        Ok(user_id)
+    }
 }
