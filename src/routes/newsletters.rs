@@ -86,7 +86,7 @@ pub async fn newsletters(
     let creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
     tracing::Span::current().record("username", tracing::field::display(&creds.username));
 
-    // Extract corresponding user_id if credentials are valid
+    // Validate credentials and extract corresponding user_id if they are valid
     let user_id = validate_creds(creds, &db_pool).await?;
     tracing::Span::current().record("user_id", tracing::field::display(&user_id));
 
@@ -177,45 +177,55 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
 
     Ok(Credentials {
         username,
-        password: SecretBox::from(Box::new(password)),
+        password: SecretBox::new(Box::new(password)),
     })
 }
 
-/// Validate provided authentication credentials
+/// Validate provided authentication credentials and return user_id if they are valid
+#[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
 async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uuid, PublishError> {
-    // Extract stored authentication credentials from the database
-    let row: Option<_> = sqlx::query!(
+    // Extract stored authentication credentials for the provided username
+    let (user_id, stored_password_hash) = get_stored_creds(&creds.username, db_pool)
+        .await
+        .map_err(PublishError::UnexpectedError)?
+        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username")))?;
+
+    // Compare computed and stored password hashes
+    let stored_password_hash = PasswordHash::new(stored_password_hash.expose_secret())
+        .context("Invalid password hash")
+        .map_err(PublishError::UnexpectedError)?;
+
+    tracing::info_span!("Verify password hash")
+        .in_scope(|| {
+            Argon2::default().verify_password(
+                creds.password.expose_secret().as_bytes(),
+                &stored_password_hash,
+            )
+        })
+        .context("Invalid password")
+        .map_err(PublishError::AuthError)?;
+
+    Ok(user_id)
+}
+
+/// Extract stored authentication credentials from the database
+#[tracing::instrument(name = "Get stored credentials", skip(username, db_pool))]
+async fn get_stored_creds(
+    username: &str,
+    db_pool: &PgPool,
+) -> Result<Option<(uuid::Uuid, SecretBox<String>)>, anyhow::Error> {
+    let row = sqlx::query!(
         r#"
         SELECT user_id, password_hash
         FROM users
         WHERE username = $1
         "#,
-        creds.username
+        username
     )
     .fetch_optional(db_pool)
     .await
-    .context("Failed to perform a query to validate auth credentials")
-    .map_err(PublishError::UnexpectedError)?;
+    .context("Failed to perform a query to validate auth credentials")?
+    .map(|row| (row.user_id, SecretBox::new(Box::new(row.password_hash))));
 
-    let (stored_password_hash, user_id) = match row {
-        Some(row) => (row.password_hash, row.user_id),
-        None => {
-            return Err(PublishError::AuthError(anyhow::anyhow!("Unknown username")));
-        }
-    };
-
-    // Compare computed and stored password hashes
-    let stored_password_hash = PasswordHash::new(&stored_password_hash)
-        .context("Invalid password hash")
-        .map_err(PublishError::UnexpectedError)?;
-
-    Argon2::default()
-        .verify_password(
-            creds.password.expose_secret().as_bytes(),
-            &stored_password_hash,
-        )
-        .context("Invalid password")
-        .map_err(PublishError::AuthError)?;
-
-    Ok(user_id)
+    Ok(row)
 }
