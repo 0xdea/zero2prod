@@ -1,10 +1,11 @@
 use std::{env, io, sync};
 
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
 use fake::faker::internet::en::{Password, Username};
 use fake::Fake;
 use linkify::{LinkFinder, LinkKind};
 use reqwest::Url;
-use sha3::{Digest, Sha3_256};
 use sqlx::PgPool;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
@@ -201,7 +202,12 @@ impl TestUser {
 
     /// Store test user data in the database
     async fn store(&self, db_pool: &PgPool) {
-        let password_hash = Sha3_256::digest(self.password.as_bytes());
+        let salt = SaltString::generate(&mut rand::thread_rng());
+        let password_hash = Argon2::default()
+            .hash_password(self.password.as_bytes(), &salt)
+            .unwrap()
+            .to_string();
+
         sqlx::query!(
             r#"
             INSERT INTO users (user_id, username, password_hash)
@@ -209,7 +215,7 @@ impl TestUser {
             "#,
             self.user_id,
             self.username,
-            format!("{password_hash:x}")
+            password_hash
         )
         .execute(db_pool)
         .await
