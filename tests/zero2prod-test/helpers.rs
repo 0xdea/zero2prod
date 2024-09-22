@@ -52,7 +52,7 @@ pub struct TestApp {
 
 impl TestApp {
     /// Spin up a test application and return its data
-    pub async fn spawn(db_pool: PgPool) -> Self {
+    pub async fn spawn(db_pool: &PgPool) -> Self {
         // Initialize logging
         sync::LazyLock::force(&TRACING);
 
@@ -74,7 +74,7 @@ impl TestApp {
 
         // Add test user
         let test_user = TestUser::generate();
-        test_user.store(&db_pool).await;
+        test_user.store(db_pool).await;
 
         // Build the application and get its address
         let app = Application::build_with_db_pool(config, db_pool)

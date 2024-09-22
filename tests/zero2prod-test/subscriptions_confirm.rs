@@ -10,7 +10,7 @@ async fn confirmations_without_token_are_rejected_with_a_400(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
 
     let response = reqwest::get(&format!("{}/subscriptions/confirm", app.address))
         .await
@@ -27,7 +27,7 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
@@ -54,7 +54,7 @@ async fn clicking_on_the_confirmation_link_confirms_a_subscriber(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))

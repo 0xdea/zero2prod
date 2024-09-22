@@ -12,7 +12,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
     app.create_unconfirmed_subscriber().await;
     let body = serde_json::json!({
              "title": "Newsletter title",
@@ -41,7 +41,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
     app.create_confirmed_subscriber().await;
     let body = serde_json::json!({
         "title": "Newsletter title",
@@ -71,7 +71,7 @@ async fn newsletters_returns_400_for_invalid_data(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
     let test_cases = vec![
         (
             serde_json::json!({
@@ -107,7 +107,7 @@ async fn requests_missing_authorization_are_rejected(
     conn_opts: PgConnectOptions,
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
 
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
@@ -134,7 +134,7 @@ async fn requests_missing_authorization_are_rejected(
 #[sqlx::test]
 async fn non_existing_user_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
 
     // Invalid username and password
     let username: String = Username().fake();
@@ -166,7 +166,7 @@ async fn non_existing_user_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgC
 #[sqlx::test]
 async fn invalid_password_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
     let db_pool = init_test_db_pool(conn_opts).await;
-    let app = TestApp::spawn(db_pool.clone()).await;
+    let app = TestApp::spawn(&db_pool).await;
 
     // Valid username and invalid password
     let username = &app.test_user.username;
