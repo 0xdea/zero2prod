@@ -196,7 +196,7 @@ pub struct TestUser {
 }
 
 impl TestUser {
-    /// Generate new test user_id and authentication credentials
+    /// Generate new test `user_id` and authentication credentials
     pub fn generate() -> Self {
         Self {
             user_id: Uuid::new_v4(),
