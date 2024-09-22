@@ -77,6 +77,7 @@ struct Credentials {
 }
 
 /// Newsletters handler to send newsletter issues
+#[allow(clippy::future_not_send)]
 #[tracing::instrument(
     name = "Publish a newsletter issue",
     skip(newsletter, db_pool, email_client, request),
