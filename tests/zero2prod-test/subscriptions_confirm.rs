@@ -1,23 +1,33 @@
-use sqlx::PgPool;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-use crate::helpers::TestApp;
+use crate::helpers::{init_test_db_pool, TestApp};
 
 #[sqlx::test]
-async fn confirmations_without_token_are_rejected_with_a_400(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn confirmations_without_token_are_rejected_with_a_400(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
 
     let response = reqwest::get(&format!("{}/subscriptions/confirm", app.address))
         .await
         .unwrap();
 
     assert_eq!(response.status(), 400);
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn the_link_returned_by_subscribe_returns_a_200_if_called(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
@@ -34,10 +44,16 @@ async fn the_link_returned_by_subscribe_returns_a_200_if_called(db_pool: PgPool)
     let response = reqwest::get(confirmation_links.html).await.unwrap();
 
     assert_eq!(response.status(), 200);
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn clicking_on_the_confirmation_link_confirms_a_subscriber(db_pool: PgPool) {
+async fn clicking_on_the_confirmation_link_confirms_a_subscriber(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
@@ -61,7 +77,10 @@ async fn clicking_on_the_confirmation_link_confirms_a_subscriber(db_pool: PgPool
         .fetch_one(&db_pool)
         .await
         .expect("Failed to fetch saved subscription");
+
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
     assert_eq!(saved.status, "confirmed");
+
+    db_pool.close().await;
 }

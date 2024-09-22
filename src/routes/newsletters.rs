@@ -16,6 +16,10 @@ use crate::email_client::EmailClient;
 use crate::routes::helpers::error_chain_fmt;
 use crate::telemetry::spawn_blocking_with_tracing;
 
+/// Fallback hash in case an invalid username is provided during authentication
+const FALLBACK_HASH: &str =
+"$argon2id$v=19$m=15000,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno";
+
 /// Newsletter data
 #[derive(serde::Deserialize)]
 pub struct NewsletterData {
@@ -186,20 +190,29 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
 /// Validate provided authentication credentials and return user_id if they are valid
 #[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
 async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid, PublishError> {
+    // Fallback user_id and password hash to prevent timing attacks
+    let mut user_id = None;
+    let mut expected_password_hash = SecretBox::new(Box::new(FALLBACK_HASH.to_string()));
+
     // Extract stored authentication credentials for the provided username
-    let (user_id, stored_password_hash) = get_stored_creds(&creds.username, db_pool)
+    if let Some((stored_user_id, stored_password_hash)) = get_stored_creds(&creds.username, db_pool)
         .await
         .map_err(PublishError::UnexpectedError)?
-        .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username")))?;
+    {
+        user_id = Some(stored_user_id);
+        expected_password_hash = stored_password_hash;
+    }
 
     // Verify provided password against stored password hash
-    spawn_blocking_with_tracing(move || verify_password_hash(stored_password_hash, creds.password))
-        .await
-        .context("Failed to spawn blocking task")
-        .map_err(PublishError::UnexpectedError)?
-        .await?;
+    spawn_blocking_with_tracing(move || {
+        verify_password_hash(expected_password_hash, creds.password)
+    })
+    .await
+    .context("Failed to spawn blocking task")
+    .map_err(PublishError::UnexpectedError)?
+    .await?;
 
-    Ok(user_id)
+    user_id.ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username")))
 }
 
 /// Extract stored authentication credentials from the database
@@ -225,19 +238,19 @@ async fn get_stored_creds(
 }
 
 /// Compare computed and stored password hashes
-#[tracing::instrument(name = "Verify password hash", skip(stored_password_hash, password))]
+#[tracing::instrument(name = "Verify password hash", skip(password_hash, password))]
 async fn verify_password_hash(
-    stored_password_hash: SecretBox<String>,
+    password_hash: SecretBox<String>,
     password: SecretBox<String>,
 ) -> Result<(), PublishError> {
     // Parse stored password hash from PHC string format
-    let stored_password_hash = PasswordHash::new(stored_password_hash.expose_secret())
+    let password_hash = PasswordHash::new(password_hash.expose_secret())
         .context("Invalid stored password hash")
         .map_err(PublishError::UnexpectedError)?;
 
     // Compare computed and stored password hashes
     Argon2::default()
-        .verify_password(password.expose_secret().as_bytes(), &stored_password_hash)
+        .verify_password(password.expose_secret().as_bytes(), &password_hash)
         .context("Invalid password")
         .map_err(PublishError::AuthError)
 }

@@ -1,12 +1,16 @@
-use sqlx::PgPool;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-use crate::helpers::TestApp;
+use crate::helpers::{init_test_db_pool, TestApp};
 
 #[sqlx::test]
-async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn subscribe_returns_a_200_for_valid_form_data(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
@@ -16,12 +20,17 @@ async fn subscribe_returns_a_200_for_valid_form_data(db_pool: PgPool) {
         .await;
 
     let response = app.post_subscriptions(body.into()).await;
-
     assert_eq!(response.status(), 200);
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_persists_the_new_subscriber(db_pool: PgPool) {
+async fn subscribe_persists_the_new_subscriber(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
@@ -42,14 +51,21 @@ async fn subscribe_persists_the_new_subscriber(db_pool: PgPool) {
     .fetch_one(&db_pool)
     .await
     .expect("Failed to fetch saved subscription");
+
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
     assert_eq!(saved.status, "pending_confirmation");
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn subscribe_returns_a_400_when_data_is_missing(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let test_cases = vec![
         ("name=le%20guin", "missing the email"),
         ("email=ursula_le_guin%40gmail.com", "missing the name"),
@@ -66,11 +82,17 @@ async fn subscribe_returns_a_400_when_data_is_missing(db_pool: PgPool) {
             "The API did not fail with 400 Bad Request when the payload was {description}"
         );
     }
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_returns_a_400_when_fields_are_present_but_empty(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn subscribe_returns_a_400_when_fields_are_present_but_empty(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let test_cases = vec![
         ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
         ("name=Ursula&email=", "empty email"),
@@ -87,11 +109,17 @@ async fn subscribe_returns_a_400_when_fields_are_present_but_empty(db_pool: PgPo
             "The API did not return a 400 Bad Request when the payload was {description}"
         );
     }
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_sends_a_confirmation_email_for_valid_data(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn subscribe_sends_a_confirmation_email_for_valid_data(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
@@ -102,11 +130,17 @@ async fn subscribe_sends_a_confirmation_email_for_valid_data(db_pool: PgPool) {
         .await;
 
     app.post_subscriptions(body.into()).await;
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_sends_a_confirmation_email_with_a_link(db_pool: PgPool) {
-    let app = TestApp::spawn(db_pool).await;
+async fn subscribe_sends_a_confirmation_email_with_a_link(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
@@ -120,10 +154,16 @@ async fn subscribe_sends_a_confirmation_email_with_a_link(db_pool: PgPool) {
     let confirmation_links = app.confirmation_links(email_request);
 
     assert_eq!(confirmation_links.html, confirmation_links.text);
+
+    db_pool.close().await;
 }
 
 #[sqlx::test]
-async fn subscribe_fails_if_there_is_a_fatal_database_error(db_pool: PgPool) {
+async fn subscribe_fails_if_there_is_a_fatal_database_error(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(db_pool.clone()).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
@@ -140,4 +180,6 @@ async fn subscribe_fails_if_there_is_a_fatal_database_error(db_pool: PgPool) {
     let response = app.post_subscriptions(body.into()).await;
 
     assert_eq!(response.status(), 500);
+
+    db_pool.close().await;
 }

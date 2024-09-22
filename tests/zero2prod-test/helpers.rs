@@ -1,11 +1,13 @@
 use std::{env, io, sync};
 
 use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHasher};
+use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use fake::faker::internet::en::{Password, Username};
 use fake::Fake;
+use fdlimit::raise_fd_limit;
 use linkify::{LinkFinder, LinkKind};
 use reqwest::Url;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
@@ -53,6 +55,9 @@ impl TestApp {
     pub async fn spawn(db_pool: PgPool) -> Self {
         // Initialize logging
         sync::LazyLock::force(&TRACING);
+
+        // Raise file descriptors limit to avoid "Too many open files" error
+        raise_fd_limit().expect("Failed to raise fd limit");
 
         // Launch a mock server to stand in for Postmark's API
         let email_server = MockServer::start().await;
@@ -185,13 +190,13 @@ impl TestApp {
 
 /// Test user data
 pub struct TestUser {
-    user_id: Uuid,
-    username: String,
-    password: String,
+    pub user_id: Uuid,
+    pub username: String,
+    pub password: String,
 }
 
 impl TestUser {
-    /// Generate new test user id and authentication credentials
+    /// Generate new test user_id and authentication credentials
     pub fn generate() -> Self {
         Self {
             user_id: Uuid::new_v4(),
@@ -203,10 +208,14 @@ impl TestUser {
     /// Store test user data in the database
     async fn store(&self, db_pool: &PgPool) {
         let salt = SaltString::generate(&mut rand::thread_rng());
-        let password_hash = Argon2::default()
-            .hash_password(self.password.as_bytes(), &salt)
-            .unwrap()
-            .to_string();
+        let password_hash = Argon2::new(
+            Algorithm::Argon2id,
+            Version::V0x13,
+            Params::new(15000, 2, 1, None).unwrap(),
+        )
+        .hash_password(self.password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
 
         sqlx::query!(
             r#"
@@ -221,4 +230,9 @@ impl TestUser {
         .await
         .expect("Failed to store test user in the database");
     }
+}
+
+/// Initialize test database pool
+pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
+    PgPoolOptions::new().connect_lazy_with(conn_opts)
 }
