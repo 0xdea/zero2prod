@@ -9,10 +9,12 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
 use crate::routes::helpers::error_chain_fmt;
+use crate::telemetry::spawn_blocking_with_tracing;
 
 /// Newsletter data
 #[derive(serde::Deserialize)]
@@ -183,27 +185,19 @@ fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
 
 /// Validate provided authentication credentials and return user_id if they are valid
 #[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
-async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uuid, PublishError> {
+async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid, PublishError> {
     // Extract stored authentication credentials for the provided username
     let (user_id, stored_password_hash) = get_stored_creds(&creds.username, db_pool)
         .await
         .map_err(PublishError::UnexpectedError)?
         .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username")))?;
 
-    // Compare computed and stored password hashes
-    let stored_password_hash = PasswordHash::new(stored_password_hash.expose_secret())
-        .context("Invalid password hash")
-        .map_err(PublishError::UnexpectedError)?;
-
-    tracing::info_span!("Verify password hash")
-        .in_scope(|| {
-            Argon2::default().verify_password(
-                creds.password.expose_secret().as_bytes(),
-                &stored_password_hash,
-            )
-        })
-        .context("Invalid password")
-        .map_err(PublishError::AuthError)?;
+    // Verify provided password against stored password hash
+    spawn_blocking_with_tracing(move || verify_password_hash(stored_password_hash, creds.password))
+        .await
+        .context("Failed to spawn blocking task")
+        .map_err(PublishError::UnexpectedError)?
+        .await?;
 
     Ok(user_id)
 }
@@ -213,7 +207,7 @@ async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<uuid::Uu
 async fn get_stored_creds(
     username: &str,
     db_pool: &PgPool,
-) -> Result<Option<(uuid::Uuid, SecretBox<String>)>, anyhow::Error> {
+) -> Result<Option<(Uuid, SecretBox<String>)>, anyhow::Error> {
     let row = sqlx::query!(
         r#"
         SELECT user_id, password_hash
@@ -228,4 +222,22 @@ async fn get_stored_creds(
     .map(|row| (row.user_id, SecretBox::new(Box::new(row.password_hash))));
 
     Ok(row)
+}
+
+/// Compare computed and stored password hashes
+#[tracing::instrument(name = "Verify password hash", skip(stored_password_hash, password))]
+async fn verify_password_hash(
+    stored_password_hash: SecretBox<String>,
+    password: SecretBox<String>,
+) -> Result<(), PublishError> {
+    // Parse stored password hash from PHC string format
+    let stored_password_hash = PasswordHash::new(stored_password_hash.expose_secret())
+        .context("Invalid stored password hash")
+        .map_err(PublishError::UnexpectedError)?;
+
+    // Compare computed and stored password hashes
+    Argon2::default()
+        .verify_password(password.expose_secret().as_bytes(), &stored_password_hash)
+        .context("Invalid password")
+        .map_err(PublishError::AuthError)
 }
