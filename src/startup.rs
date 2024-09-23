@@ -9,7 +9,7 @@ use tracing_actix_web::TracingLogger;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::{
-    healthcheck, home, login, form, newsletters, subscriptions, subscriptions_confirm,
+    form, healthcheck, home, login, newsletters, subscriptions, subscriptions_confirm,
 };
 
 /// Application data
