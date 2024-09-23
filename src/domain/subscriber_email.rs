@@ -51,7 +51,7 @@ mod tests {
     }
 
     #[derive(Debug, Clone)]
-    struct ValidEmail(pub String);
+    struct ValidEmail(String);
 
     impl Arbitrary for ValidEmail {
         fn arbitrary(g: &mut Gen) -> Self {
