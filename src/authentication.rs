@@ -16,6 +16,7 @@ pub struct Credentials {
     pub password: SecretBox<String>,
 }
 
+/// Authentication error type
 #[derive(thiserror::Error, Debug)]
 pub enum AuthError {
     #[error("Invalid credentials")]
