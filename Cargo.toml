@@ -32,6 +32,7 @@ thiserror = "1"
 anyhow = "1"
 base64 = "0.22"
 argon2 = { version = "0.5", features = ["std"] }
+urlencoding = "2"
 
 [dependencies.sqlx]
 version = "0.8"
