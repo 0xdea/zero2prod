@@ -3370,6 +3370,7 @@ dependencies = [
  "config",
  "fake",
  "fdlimit",
+ "hex",
  "hmac",
  "htmlescape",
  "linkify",
