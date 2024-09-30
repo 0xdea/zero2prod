@@ -9,10 +9,9 @@ pub struct QueryParams {
 
 /// Login GET handler
 pub async fn form(query: web::Query<QueryParams>) -> HttpResponse {
-    let err_html = query
-        .0
-        .error
-        .map_or(String::new(), |err| format!("<p><i>{err}</i></p>"));
+    let err_html = query.0.error.map_or(String::new(), |err| {
+        format!("<p><i>{}</i></p>", htmlescape::encode_minimal(&err))
+    });
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(

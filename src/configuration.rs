@@ -24,6 +24,7 @@ pub struct ApplicationSettings {
     pub app_host: String,
     pub app_port: u16,
     pub base_url: String,
+    pub hmac_secret: SecretBox<String>,
 }
 
 /// Database settings

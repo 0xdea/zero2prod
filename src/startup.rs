@@ -2,6 +2,7 @@ use std::{io, net, time};
 
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
+use secrecy::SecretBox;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
@@ -20,6 +21,9 @@ pub struct Application {
 
 /// Application base URL
 pub struct ApplicationBaseUrl(pub String);
+
+/// HMAC secret type
+pub struct HmacSecret(pub SecretBox<String>);
 
 impl Application {
     /// Build an application based on settings
@@ -60,6 +64,7 @@ impl Application {
             db_pool.clone(),
             email_client,
             config.application.base_url,
+            config.application.hmac_secret,
         )?;
         Ok(Self { server, port })
     }
@@ -81,11 +86,13 @@ pub fn run_server(
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
+    hmac_secret: SecretBox<String>,
 ) -> Result<Server, io::Error> {
     // Prepare data to be added the application context
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+    let hmac_secret = web::Data::new(HmacSecret(hmac_secret));
 
     // Start the HTTP server
     Ok(HttpServer::new(move || {
@@ -104,6 +111,7 @@ pub fn run_server(
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
+            .app_data(hmac_secret.clone())
     })
     .listen(listener)?
     .run())
