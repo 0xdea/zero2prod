@@ -1,5 +1,6 @@
 use std::fmt;
 
+use actix_web::cookie::Cookie;
 use actix_web::error::InternalError;
 use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
@@ -20,7 +21,7 @@ pub struct FormData {
 /// Login error type
 #[derive(thiserror::Error)]
 pub enum LoginError {
-    #[error("Authentication failure")]
+    #[error("Authentication failed")]
     AuthError(#[source] anyhow::Error),
     #[error("Something went wrong")]
     UnexpectedError(#[from] anyhow::Error),
@@ -72,6 +73,7 @@ pub async fn login(
             };
             let response = HttpResponse::SeeOther()
                 .insert_header((LOCATION, "/login"))
+                .cookie(Cookie::new("_flash", err.to_string()))
                 .finish();
             Err(InternalError::from_response(err, response))
         }

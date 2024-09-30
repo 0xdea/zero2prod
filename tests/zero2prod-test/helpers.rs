@@ -188,6 +188,7 @@ impl TestApp {
     }
 
     /// POST to the login endpoint
+    #[allow(clippy::future_not_send)]
     pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
     where
         Body: serde::Serialize,
