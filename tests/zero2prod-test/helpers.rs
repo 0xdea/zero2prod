@@ -186,6 +186,23 @@ impl TestApp {
             .await
             .expect("Failed to send request")
     }
+
+    /// POST to the login endpoint
+    pub async fn post_login<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        reqwest::Client::builder()
+            // Do not follow redirects
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap()
+            .post(format!("{}/login", &self.address))
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
 }
 
 /// Test user data
@@ -235,4 +252,10 @@ impl TestUser {
 /// Initialize test database pool
 pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
     PgPoolOptions::new().connect_lazy_with(conn_opts)
+}
+
+/// Assert: response is a redirect to the specified location
+pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
+    assert_eq!(response.status(), 303);
+    assert_eq!(response.headers().get("Location").unwrap(), location);
 }

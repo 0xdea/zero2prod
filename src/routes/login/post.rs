@@ -4,14 +4,11 @@ use actix_web::error::InternalError;
 use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
-use hmac::{Hmac, Mac};
-use secrecy::{ExposeSecret, SecretBox};
-use sha2::Sha256;
+use secrecy::SecretBox;
 use sqlx::PgPool;
 
 use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::routes::helpers::error_chain_fmt;
-use crate::startup::HmacSecret;
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -43,13 +40,12 @@ impl ResponseError for LoginError {
 
 /// Login POST handler
 #[tracing::instrument(
-    skip(form, db_pool, hmac_secret),
+    skip(form, db_pool),
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
 pub async fn login(
     form: web::Form<FormData>,
     db_pool: web::Data<PgPool>,
-    hmac_secret: web::Data<HmacSecret>,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
     // Extract authentication credentials
     let creds = Credentials {
@@ -74,16 +70,8 @@ pub async fn login(
                 AuthError::InvalidCredentials(_) => LoginError::AuthError(err.into()),
                 AuthError::UnexpectedError(_) => LoginError::UnexpectedError(err.into()),
             };
-            let query_string = format!("error={}", urlencoding::Encoded::new(err.to_string()));
-            let tag = {
-                let mut hmac =
-                    Hmac::<Sha256>::new_from_slice(hmac_secret.0.expose_secret().as_bytes())
-                        .unwrap();
-                hmac.update(query_string.as_bytes());
-                hmac.finalize().into_bytes()
-            };
             let response = HttpResponse::SeeOther()
-                .insert_header((LOCATION, format!("/login?{query_string}&tag={tag:x}")))
+                .insert_header((LOCATION, "/login"))
                 .finish();
             Err(InternalError::from_response(err, response))
         }

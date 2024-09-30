@@ -13,6 +13,7 @@ pub struct QueryParams {
     tag: String,
 }
 
+// TODO: remove hmac, sha2, etc.
 impl QueryParams {
     /// Verify the HMAC tag
     fn verify(self, hmac_secret: &HmacSecret) -> Result<String, anyhow::Error> {
