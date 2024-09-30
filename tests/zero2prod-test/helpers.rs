@@ -214,7 +214,7 @@ impl TestApp {
     /// GET to the login endpoint, extract HTML
     pub async fn get_login_html(&self) -> String {
         self.api_client
-            .get(&format!("{}/login.html", &self.address))
+            .get(format!("{}/login", &self.address))
             .send()
             .await
             .expect("Failed to send request")
