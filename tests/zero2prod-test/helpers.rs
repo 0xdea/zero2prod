@@ -48,6 +48,7 @@ pub struct TestApp {
     pub port: u16,
     pub email_server: MockServer,
     pub test_user: TestUser,
+    pub api_client: reqwest::Client,
 }
 
 impl TestApp {
@@ -83,6 +84,13 @@ impl TestApp {
         let port = app.port();
         let address = format!("http://127.0.0.1:{port}");
 
+        // Build the API client
+        let api_client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .cookie_store(true)
+            .build()
+            .unwrap();
+
         // Run the application and return its data
         #[allow(clippy::let_underscore_future)]
         let _ = tokio::spawn(app.run_until_stopped());
@@ -91,12 +99,13 @@ impl TestApp {
             port,
             email_server,
             test_user,
+            api_client,
         }
     }
 
     /// Perform a POST request to the subscriptions endpoint
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
-        reqwest::Client::new()
+        self.api_client
             .post(format!("{}/subscriptions", &self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
@@ -178,7 +187,7 @@ impl TestApp {
 
     /// POST to the newsletters endpoint
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        reqwest::Client::new()
+        self.api_client
             .post(format!("{}/newsletters", &self.address))
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
@@ -193,16 +202,25 @@ impl TestApp {
     where
         Body: serde::Serialize,
     {
-        reqwest::Client::builder()
+        self.api_client
             // Do not follow redirects
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .unwrap()
             .post(format!("{}/login", &self.address))
             .form(body)
             .send()
             .await
             .expect("Failed to send request")
+    }
+
+    /// GET to the login endpoint, extract HTML
+    pub async fn get_login_html(&self) -> String {
+        self.api_client
+            .get(&format!("{}/login.html", &self.address))
+            .send()
+            .await
+            .expect("Failed to send request")
+            .text()
+            .await
+            .unwrap()
     }
 }
 
