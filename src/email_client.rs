@@ -90,12 +90,12 @@ mod tests {
     impl wiremock::Match for SendEmailBodyMatcher {
         fn matches(&self, request: &Request) -> bool {
             let result = serde_json::from_slice::<serde_json::Value>(&request.body);
-            result.map_or(false, |body| {
-                body.get("From").is_some()
-                    && body.get("To").is_some()
-                    && body.get("Subject").is_some()
-                    && body.get("HtmlBody").is_some()
-                    && body.get("TextBody").is_some()
+            result.map_or(false, |v| {
+                v.get("From").is_some()
+                    && v.get("To").is_some()
+                    && v.get("Subject").is_some()
+                    && v.get("HtmlBody").is_some()
+                    && v.get("TextBody").is_some()
             })
         }
     }

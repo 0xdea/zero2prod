@@ -136,7 +136,7 @@ async fn get_confirmed_subscribers(
     .fetch_all(db_pool)
     .await?
     .into_iter()
-    .map(|row| match EmailAddress::parse(row.email) {
+    .map(|r| match EmailAddress::parse(r.email) {
         Ok(email) => Ok(ConfirmedSubscriber { email }),
         Err(error) => Err(anyhow::anyhow!(error)),
     })

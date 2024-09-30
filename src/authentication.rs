@@ -68,7 +68,7 @@ async fn get_stored_creds(
     .fetch_optional(db_pool)
     .await
     .context("Failed to perform a query to validate auth credentials")?
-    .map(|row| (row.user_id, SecretBox::new(Box::new(row.password_hash))));
+    .map(|r| (r.user_id, SecretBox::new(Box::new(r.password_hash))));
 
     Ok(row)
 }

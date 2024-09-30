@@ -66,16 +66,16 @@ pub async fn login(
         }
 
         // Invalid credentials
-        Err(err) => {
-            let err = match err {
-                AuthError::InvalidCredentials(_) => LoginError::AuthError(err.into()),
-                AuthError::UnexpectedError(_) => LoginError::UnexpectedError(err.into()),
+        Err(e) => {
+            let e = match e {
+                AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
+                AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
             };
             let response = HttpResponse::SeeOther()
                 .insert_header((LOCATION, "/login"))
-                .cookie(Cookie::new("_flash", err.to_string()))
+                .cookie(Cookie::new("_flash", e.to_string()))
                 .finish();
-            Err(InternalError::from_response(err, response))
+            Err(InternalError::from_response(e, response))
         }
     }
 }
