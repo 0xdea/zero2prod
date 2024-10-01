@@ -1,17 +1,19 @@
-use actix_web::cookie::Cookie;
+use std::fmt::Write;
+
 use actix_web::http::header::ContentType;
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::HttpResponse;
+use actix_web_flash_messages::{IncomingFlashMessages, Level};
 
 /// Login GET handler
-#[allow(clippy::future_not_send)]
-pub async fn form(request: HttpRequest) -> HttpResponse {
-    // Extract error message from cookie
-    let err_html = request
-        .cookie("_flash")
-        .map_or(String::new(), |c| format!("<p><i>{}</i></p>", c.value()));
+pub async fn form(flash_messages: IncomingFlashMessages) -> HttpResponse {
+    // Process incoming flash messages
+    let mut err_html = String::new();
+    for m in flash_messages.iter().filter(|m| m.level() == Level::Error) {
+        writeln!(err_html, "<p><i>{}</i></p>", m.content()).unwrap();
+    }
 
-    // Display login form
-    let mut response = HttpResponse::Ok()
+    // Display login form with any error message
+    HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(
             r#"<!DOCTYPE html>
@@ -39,10 +41,5 @@ pub async fn form(request: HttpRequest) -> HttpResponse {
     </form>
 </body>
 </html>"#,
-        ));
-    response
-        .add_removal_cookie(&Cookie::new("_flash", ""))
-        .unwrap();
-
-    response
+        ))
 }
