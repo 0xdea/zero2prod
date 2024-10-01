@@ -236,8 +236,8 @@ impl TestUser {
     pub fn generate() -> Self {
         Self {
             user_id: Uuid::new_v4(),
-            username: Username().fake(),
-            password: Password(32..33).fake(),
+            username: fake_username(),
+            password: fake_password(),
         }
     }
 
@@ -277,4 +277,14 @@ pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
     assert_eq!(response.status(), 303);
     assert_eq!(response.headers().get("Location").unwrap(), location);
+}
+
+/// Generate a fake username
+pub fn fake_username() -> String {
+    Username().fake()
+}
+
+/// Generate a fake password
+pub fn fake_password() -> String {
+    Password(32..33).fake()
 }

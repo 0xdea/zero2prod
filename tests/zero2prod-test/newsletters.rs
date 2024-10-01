@@ -1,10 +1,8 @@
-use fake::faker::internet::en::{Password, Username};
-use fake::Fake;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-use crate::helpers::{init_test_db_pool, TestApp};
+use crate::helpers::{fake_password, fake_username, init_test_db_pool, TestApp};
 
 #[sqlx::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
@@ -137,8 +135,8 @@ async fn non_existing_user_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgC
     let app = TestApp::spawn(&db_pool).await;
 
     // Invalid username and password
-    let username: String = Username().fake();
-    let password: String = Password(32..33).fake();
+    let username = fake_username();
+    let password = fake_password();
 
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
@@ -170,7 +168,7 @@ async fn invalid_password_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgCo
 
     // Valid username and invalid password
     let username = &app.test_user.username;
-    let password: String = Password(32..33).fake();
+    let password = fake_password();
     assert_ne!(app.test_user.password, password);
 
     let response = reqwest::Client::new()
