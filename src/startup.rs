@@ -84,6 +84,7 @@ impl Application {
 }
 
 /// Run the HTTP server
+/// TODO: Refactor `HmacSecret` into a more generic secret key new-type
 pub fn run_server(
     listener: net::TcpListener,
     db_pool: PgPool,
@@ -91,9 +92,11 @@ pub fn run_server(
     base_url: String,
     hmac_secret: SecretBox<String>,
 ) -> Result<Server, io::Error> {
+    // Extract secret key from HMAC secret
+    let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
+
     // Build message framework
-    let message_store =
-        CookieMessageStore::builder(Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let message_store = CookieMessageStore::builder(secret_key).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
     // Prepare data to be added the application context

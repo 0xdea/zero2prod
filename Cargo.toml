@@ -33,6 +33,7 @@ anyhow = "1"
 base64 = "0.22"
 argon2 = { version = "0.5", features = ["std"] }
 actix-web-flash-messages = { version = "0.5", features = ["cookies"] }
+actix-session = { version = "0.10", features = ["redis-session-rustls"] }
 
 [dependencies.sqlx]
 version = "0.8"
