@@ -1,8 +1,11 @@
 use std::{io, net, time};
 
+use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
-use secrecy::SecretBox;
+use actix_web_flash_messages::storage::CookieMessageStore;
+use actix_web_flash_messages::FlashMessagesFramework;
+use secrecy::{ExposeSecret, SecretBox};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
@@ -88,6 +91,11 @@ pub fn run_server(
     base_url: String,
     hmac_secret: SecretBox<String>,
 ) -> Result<Server, io::Error> {
+    // Build message framework
+    let message_store =
+        CookieMessageStore::builder(Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let message_framework = FlashMessagesFramework::builder(message_store).build();
+
     // Prepare data to be added the application context
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
@@ -97,6 +105,7 @@ pub fn run_server(
     // Start the HTTP server
     Ok(HttpServer::new(move || {
         App::new()
+            .wrap(message_framework.clone())
             .wrap(TracingLogger::default())
             .route("/", web::get().to(home))
             .route("/login", web::get().to(form))
