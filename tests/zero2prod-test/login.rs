@@ -30,3 +30,24 @@ async fn an_error_flash_message_is_set_on_failure(
 
     db_pool.close().await;
 }
+
+#[sqlx::test]
+async fn redirect_to_admin_dashboard_after_login_success(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(&db_pool).await;
+    let body = serde_json::json!({
+        "username" : &app.test_user.username,
+        "password" : &app.test_user.password,
+    });
+
+    let response = app.post_login(&body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
+
+    let html = app.get_dashboard_html().await;
+    assert!(html.contains(&format!("Welcome {}!", app.test_user.username)));
+
+    db_pool.close().await;
+}

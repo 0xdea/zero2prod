@@ -222,6 +222,18 @@ impl TestApp {
             .await
             .unwrap()
     }
+
+    /// GET to the admin dashboard endpoint, extract HTML
+    pub async fn get_dashboard_html(&self) -> String {
+        self.api_client
+            .get(format!("{}/admin/dashboard", &self.address))
+            .send()
+            .await
+            .expect("Failed to send request")
+            .text()
+            .await
+            .unwrap()
+    }
 }
 
 /// Test user data
