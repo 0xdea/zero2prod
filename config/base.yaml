@@ -9,3 +9,4 @@ database:
   database: newsletter
 email_client:
   timeout_millis: 10000
+redis_uri: redis://127.0.0.1:6379

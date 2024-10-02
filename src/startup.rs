@@ -1,5 +1,5 @@
-use std::{io, net, time};
-
+use actix_session::storage::RedisSessionStore;
+use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
@@ -8,6 +8,7 @@ use actix_web_flash_messages::FlashMessagesFramework;
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use std::{io, net, time};
 use tracing_actix_web::TracingLogger;
 
 use crate::configuration::Settings;
@@ -30,7 +31,7 @@ pub struct HmacSecret(pub SecretBox<String>);
 
 impl Application {
     /// Build an application based on settings
-    pub async fn build(config: Settings) -> Result<Self, io::Error> {
+    pub async fn build(config: Settings) -> Result<Self, anyhow::Error> {
         // Connect to the database
         let db_pool = PgPoolOptions::new()
             .acquire_timeout(time::Duration::from_secs(2))
@@ -41,8 +42,10 @@ impl Application {
     }
 
     /// Build an application based on settings and database pool
-    #[allow(clippy::unused_async)]
-    pub async fn build_with_db_pool(config: Settings, db_pool: &PgPool) -> Result<Self, io::Error> {
+    pub async fn build_with_db_pool(
+        config: Settings,
+        db_pool: &PgPool,
+    ) -> Result<Self, anyhow::Error> {
         // Build an email client
         let base_url = config.email_client.base_url().expect("Invalid base URL");
         let sender_email = config
@@ -68,7 +71,9 @@ impl Application {
             email_client,
             config.application.base_url,
             config.application.hmac_secret,
-        )?;
+            config.redis_uri,
+        )
+        .await?;
         Ok(Self { server, port })
     }
 
@@ -85,19 +90,23 @@ impl Application {
 
 /// Run the HTTP server
 /// TODO: Refactor `HmacSecret` into a more generic secret key new-type
-pub fn run_server(
+pub async fn run_server(
     listener: net::TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
     hmac_secret: SecretBox<String>,
-) -> Result<Server, io::Error> {
+    redis_uri: SecretBox<String>,
+) -> Result<Server, anyhow::Error> {
     // Extract secret key from HMAC secret
     let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
 
     // Build message framework
-    let message_store = CookieMessageStore::builder(secret_key).build();
+    let message_store = CookieMessageStore::builder(secret_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
+
+    // Set up Redis session store
+    let redis_store = RedisSessionStore::new(redis_uri.expose_secret()).await?;
 
     // Prepare data to be added the application context
     let db_pool = web::Data::new(db_pool);
@@ -109,6 +118,10 @@ pub fn run_server(
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(message_framework.clone())
+            .wrap(SessionMiddleware::new(
+                redis_store.clone(),
+                secret_key.clone(),
+            ))
             .wrap(TracingLogger::default())
             .route("/", web::get().to(home))
             .route("/login", web::get().to(form))
