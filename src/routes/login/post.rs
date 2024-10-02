@@ -63,6 +63,8 @@ pub async fn login(
         // Valid credentials: start a session and redirect to dashboard
         Ok(user_id) => {
             tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+            // Prevent session fixation attacks
+            session.renew();
             session
                 .insert("user_id", user_id)
                 .map_err(|e| redirect_to_login_with_error(LoginError::UnexpectedError(e.into())))?;
