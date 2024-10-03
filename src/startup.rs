@@ -106,6 +106,7 @@ pub async fn run_server(
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
     // Set up Redis session store
+    // TODO: fix Redis connection problems in production Docker container
     let redis_store = RedisSessionStore::new(redis_uri.expose_secret()).await?;
 
     // Prepare data to be added the application context
