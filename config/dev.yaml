@@ -2,8 +2,10 @@ application:
   app_host: 127.0.0.1
   base_url: http://127.0.0.1
 database:
+  host: 127.0.0.1
   require_ssl: false
 email_client:
   base_url: http://localhost
   sender_email: test@example.org
   authorization_token: my_secret_token
+redis_uri: redis://127.0.0.1:6379

@@ -2,8 +2,10 @@ application:
   app_host: 0.0.0.0
   base_url: https://api.example.org
 database:
+  host: 172.17.0.2
   require_ssl: true
 email_client:
   base_url: https://api.postmarkapp.com
   sender_email: test@gmail.com
   authorization_token: my_secret_token
+redis_uri: redis://172.17.0.3:6379
