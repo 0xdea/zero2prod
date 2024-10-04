@@ -1,7 +1,6 @@
 use std::fmt;
 
 use actix_web::error::InternalError;
-use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use actix_web_flash_messages::FlashMessage;
@@ -11,6 +10,7 @@ use sqlx::PgPool;
 use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::routes::helpers::error_chain_fmt;
 use crate::session_state::TypedSession;
+use crate::utils::see_other;
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -68,9 +68,7 @@ pub async fn login(
             session
                 .insert_user_id(user_id)
                 .map_err(|e| redirect_to_login_with_error(LoginError::UnexpectedError(e.into())))?;
-            Ok(HttpResponse::SeeOther()
-                .insert_header((LOCATION, "/admin/dashboard"))
-                .finish())
+            Ok(see_other("/admin/dashboard"))
         }
 
         // Invalid credentials: return error in flash message and redirect to login
@@ -87,8 +85,5 @@ pub async fn login(
 /// Redirect to the login page with an error message
 fn redirect_to_login_with_error(err: LoginError) -> InternalError<LoginError> {
     FlashMessage::error(err.to_string()).send();
-    let response = HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/login"))
-        .finish();
-    InternalError::from_response(err, response)
+    InternalError::from_response(err, see_other("/login"))
 }

@@ -236,6 +236,29 @@ impl TestApp {
     pub async fn get_dashboard_html(&self) -> String {
         self.get_admin_dashboard().await.text().await.unwrap()
     }
+
+    /// GET to the password change endpoint
+    pub async fn get_password(&self) -> reqwest::Response {
+        self.api_client
+            .get(format!("{}/admin/password", &self.address))
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
+
+    /// POST to the password change endpoint
+    #[allow(clippy::future_not_send)]
+    pub async fn post_password<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.api_client
+            .post(format!("{}/admin/password", &self.address))
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
 }
 
 /// Test user data

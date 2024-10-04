@@ -1,12 +1,11 @@
-use std::fmt;
-
-use actix_web::http::header::{ContentType, LOCATION};
+use actix_web::http::header::ContentType;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::session_state::TypedSession;
+use crate::utils::{err500, see_other};
 
 // TODO: implement a login-protected admin functionality to invite more admins/collaborators
 
@@ -19,22 +18,12 @@ pub async fn dashboard(
     let username = if let Some(user_id) = session.get_user_id().map_err(err500)? {
         get_username(user_id, &db_pool).await.map_err(err500)?
     } else {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, "/login"))
-            .finish());
+        return Ok(see_other("/login"));
     };
 
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(include_str!("dashboard.html"), username)))
-}
-
-/// Return an opaque Error 500 while preserving the error's cause for logging purposes
-fn err500<T>(err: T) -> actix_web::Error
-where
-    T: fmt::Debug + fmt::Display + 'static,
-{
-    actix_web::error::ErrorInternalServerError(err)
 }
 
 /// Retrieve the username that matches a user_id from the database
