@@ -1,19 +1,20 @@
 use std::fmt;
 
-use actix_session::Session;
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::session_state::TypedSession;
+
 /// Admin dashboard handler
 #[allow(clippy::future_not_send)]
 pub async fn dashboard(
-    session: Session,
+    session: TypedSession,
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let username = if let Some(user_id) = session.get::<Uuid>("user_id").map_err(err500)? {
+    let username = if let Some(user_id) = session.get_user_id().map_err(err500)? {
         get_username(user_id, &db_pool).await.map_err(err500)?
     } else {
         todo!()

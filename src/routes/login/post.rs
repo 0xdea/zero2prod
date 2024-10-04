@@ -1,6 +1,5 @@
 use std::fmt;
 
-use actix_session::Session;
 use actix_web::error::InternalError;
 use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
@@ -11,6 +10,7 @@ use sqlx::PgPool;
 
 use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::routes::helpers::error_chain_fmt;
+use crate::session_state::TypedSession;
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -49,7 +49,7 @@ impl ResponseError for LoginError {
 pub async fn login(
     form: web::Form<FormData>,
     db_pool: web::Data<PgPool>,
-    session: Session,
+    session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
     // Extract authentication credentials
     let creds = Credentials {
@@ -66,7 +66,7 @@ pub async fn login(
             // Prevent session fixation attacks
             session.renew();
             session
-                .insert("user_id", user_id)
+                .insert_user_id(user_id)
                 .map_err(|e| redirect_to_login_with_error(LoginError::UnexpectedError(e.into())))?;
             Ok(HttpResponse::SeeOther()
                 .insert_header((LOCATION, "/admin/dashboard"))
