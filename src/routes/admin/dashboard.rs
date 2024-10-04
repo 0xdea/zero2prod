@@ -26,18 +26,7 @@ pub async fn dashboard(
 
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
-        .body(format!(
-            r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <title>Admin dashboard</title>
-</head>
-<body>
-    <p>Welcome {username}!</p>
-</body>
-</html>"#
-        )))
+        .body(format!(include_str!("dashboard.html"), username)))
 }
 
 /// Return an opaque Error 500 while preserving the error's cause for logging purposes
