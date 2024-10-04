@@ -223,16 +223,18 @@ impl TestApp {
             .unwrap()
     }
 
-    /// GET to the admin dashboard endpoint, extract HTML
-    pub async fn get_dashboard_html(&self) -> String {
+    /// GET to the admin dashboard endpoint
+    pub async fn get_admin_dashboard(&self) -> reqwest::Response {
         self.api_client
             .get(format!("{}/admin/dashboard", &self.address))
             .send()
             .await
             .expect("Failed to send request")
-            .text()
-            .await
-            .unwrap()
+    }
+
+    /// GET to the admin dashboard endpoint, extract HTML
+    pub async fn get_dashboard_html(&self) -> String {
+        self.get_admin_dashboard().await.text().await.unwrap()
     }
 }
 

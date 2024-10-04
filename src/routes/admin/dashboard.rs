@@ -1,6 +1,6 @@
 use std::fmt;
 
-use actix_web::http::header::ContentType;
+use actix_web::http::header::{ContentType, LOCATION};
 use actix_web::{web, HttpResponse};
 use anyhow::Context;
 use sqlx::PgPool;
@@ -17,7 +17,9 @@ pub async fn dashboard(
     let username = if let Some(user_id) = session.get_user_id().map_err(err500)? {
         get_username(user_id, &db_pool).await.map_err(err500)?
     } else {
-        todo!()
+        return Ok(HttpResponse::SeeOther()
+            .insert_header((LOCATION, "/login"))
+            .finish());
     };
 
     Ok(HttpResponse::Ok()

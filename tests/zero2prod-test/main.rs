@@ -1,3 +1,4 @@
+mod dashboard;
 mod healthcheck;
 mod helpers;
 mod login;
