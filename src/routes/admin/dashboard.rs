@@ -8,6 +8,8 @@ use uuid::Uuid;
 
 use crate::session_state::TypedSession;
 
+// TODO: implement a login-protected admin functionality to invite more admins/collaborators
+
 /// Admin dashboard handler
 #[allow(clippy::future_not_send)]
 pub async fn dashboard(

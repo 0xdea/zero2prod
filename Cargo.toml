@@ -9,6 +9,7 @@ repository = "https://github.com/0xdea/zero2prod"
 license = "MIT"
 keywords = ["tutorial", "api", "web", "email"]
 categories = ["web-programming", "email"]
+default-run = "zero2prod"
 
 [dependencies]
 actix-web = "4"
@@ -34,6 +35,7 @@ base64 = "0.22"
 argon2 = { version = "0.5", features = ["std"] }
 actix-web-flash-messages = { version = "0.5", features = ["cookies"] }
 actix-session = { version = "0.10", features = ["redis-session-rustls"] }
+fake = "2.9"
 
 [dependencies.sqlx]
 version = "0.8"
@@ -42,7 +44,6 @@ features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "mig
 
 [dev-dependencies]
 claim = "0.5"
-fake = "2.9"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 wiremock = "0.6"
