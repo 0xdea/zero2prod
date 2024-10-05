@@ -211,7 +211,7 @@ impl TestApp {
             .expect("Failed to send request")
     }
 
-    /// GET to the login endpoint, extract HTML
+    /// GET to the login endpoint and extract HTML
     pub async fn get_login_html(&self) -> String {
         self.api_client
             .get(format!("{}/login", &self.address))
@@ -244,6 +244,11 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to send request")
+    }
+
+    /// GET to the password change endpoint and extract HTML
+    pub async fn get_password_html(&self) -> String {
+        self.get_password().await.text().await.unwrap()
     }
 
     /// POST to the password change endpoint
