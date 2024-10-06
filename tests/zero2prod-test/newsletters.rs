@@ -12,7 +12,16 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
+
+    // Create an unconfirmed subscriber for which we expect no newsletters
     app.create_unconfirmed_subscriber().await;
+    Mock::given(any())
+        .respond_with(ResponseTemplate::new(200))
+        .expect(0)
+        .mount(&app.email_server)
+        .await;
+
+    // Try to send the newsletter
     let body = serde_json::json!({
              "title": "Newsletter title",
              "content": {
@@ -20,15 +29,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
                  "html": "<p>Newsletter body as HTML</p>",
              }
     });
-
-    Mock::given(any())
-        .respond_with(ResponseTemplate::new(200))
-        .expect(0)
-        .mount(&app.email_server)
-        .await;
-
     let response = app.post_newsletters(body).await;
-
     assert_eq!(response.status(), 200);
 
     db_pool.close().await;
@@ -41,15 +42,9 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
-    app.create_confirmed_subscriber().await;
-    let body = serde_json::json!({
-        "title": "Newsletter title",
-        "content": {
-            "text": "Newsletter body as plain text",
-            "html": "<p>Newsletter body as HTML</p>",
-            }
-    });
 
+    // Create a confirmed subscriber for which we expect one newsletter
+    app.create_confirmed_subscriber().await;
     Mock::given(path("/email"))
         .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
@@ -57,8 +52,15 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
         .mount(&app.email_server)
         .await;
 
+    // Try to send the newsletter
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": {
+            "text": "Newsletter body as plain text",
+            "html": "<p>Newsletter body as HTML</p>",
+            }
+    });
     let response = app.post_newsletters(body).await;
-
     assert_eq!(response.status(), 200);
 
     db_pool.close().await;
@@ -71,6 +73,7 @@ async fn newsletters_returns_400_for_invalid_data(
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
+
     let test_cases = vec![
         (
             serde_json::json!({
@@ -89,7 +92,6 @@ async fn newsletters_returns_400_for_invalid_data(
     #[allow(unused_variables)]
     for (body, description) in test_cases {
         let response = app.post_newsletters(body).await;
-
         assert_eq!(
             response.status(),
             400,
@@ -108,15 +110,16 @@ async fn requests_missing_authorization_are_rejected(
     let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": {
+            "text": "Newsletter body as plain text",
+            "html": "<p>Newsletter body as HTML</p>",
+        }
+    });
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
-        .json(&serde_json::json!({
-            "title": "Newsletter title",
-            "content": {
-                "text": "Newsletter body as plain text",
-                "html": "<p>Newsletter body as HTML</p>",
-            }
-        }))
+        .json(&body)
         .send()
         .await
         .expect("Failed to send request");
@@ -139,16 +142,17 @@ async fn non_existing_user_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgC
     let username = fake_username();
     let password = fake_password(FAKE_PASSWORD_LEN);
 
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": {
+            "text": "Newsletter body as plain text",
+            "html": "<p>Newsletter body as HTML</p>",
+        }
+    });
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
         .basic_auth(username, Some(password))
-        .json(&serde_json::json!({
-            "title": "Newsletter title",
-            "content": {
-                "text": "Newsletter body as plain text",
-                "html": "<p>Newsletter body as HTML</p>",
-            }
-        }))
+        .json(&body)
         .send()
         .await
         .expect("Failed to send request");
@@ -172,16 +176,17 @@ async fn invalid_password_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgCo
     let password = fake_password(FAKE_PASSWORD_LEN);
     assert_ne!(app.test_user.password, password);
 
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": {
+            "text": "Newsletter body as plain text",
+            "html": "<p>Newsletter body as HTML</p>",
+        }
+    });
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
         .basic_auth(username, Some(password))
-        .json(&serde_json::json!({
-            "title": "Newsletter title",
-            "content": {
-                "text": "Newsletter body as plain text",
-                "html": "<p>Newsletter body as HTML</p>",
-            }
-        }))
+        .json(&body)
         .send()
         .await
         .expect("Failed to send request");

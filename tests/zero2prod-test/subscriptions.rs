@@ -11,7 +11,6 @@ async fn subscribe_returns_a_200_for_valid_form_data(
 ) {
     let db_pool = init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     Mock::given(path("/email"))
         .and(method("POST"))
@@ -19,6 +18,7 @@ async fn subscribe_returns_a_200_for_valid_form_data(
         .mount(&app.email_server)
         .await;
 
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = app.post_subscriptions(body.into()).await;
     assert_eq!(response.status(), 200);
 
