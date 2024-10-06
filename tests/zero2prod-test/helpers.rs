@@ -266,6 +266,15 @@ impl TestApp {
             .await
             .expect("Failed to send request")
     }
+
+    /// POST to the logout endpoint
+    pub async fn post_logout(&self) -> reqwest::Response {
+        self.api_client
+            .post(format!("{}/admin/logout", &self.address))
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
 }
 
 /// Test user data
