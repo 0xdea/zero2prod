@@ -1,7 +1,9 @@
+use actix_web::error::InternalError;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::authentication::{change_password, validate_creds, AuthError, Credentials};
 use crate::session_state::TypedSession;
@@ -23,14 +25,8 @@ pub async fn password(
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
     // Validate session and retrieve associated username and `user_id`
-    let (username, user_id) = if let Some(user_id) = session.get_user_id().map_err(err500)? {
-        (
-            get_username(user_id, &db_pool).await.map_err(err500)?,
-            user_id,
-        )
-    } else {
-        return Ok(see_other("/login"));
-    };
+    let user_id = validate_session(&session)?;
+    let username = get_username(user_id, &db_pool).await.map_err(err500)?;
 
     // Return error in flash message and redirect back to /admin/password if new password fields do not match
     if form.new_password.expose_secret() != form.new_password2.expose_secret() {
@@ -72,4 +68,16 @@ pub async fn password(
         .map_err(err500)?;
     FlashMessage::info("Your password has been changed").send();
     Ok(see_other("/admin/password"))
+}
+
+/// Return `user_id` of authenticated users and reject users that are not authenticated
+fn validate_session(session: &TypedSession) -> Result<Uuid, actix_web::Error> {
+    session.get_user_id().map_err(err500)?.map_or_else(
+        || {
+            let response = see_other("/login");
+            let e = anyhow::anyhow!("The user has not logged in");
+            Err(InternalError::from_response(e, response).into())
+        },
+        Ok,
+    )
 }

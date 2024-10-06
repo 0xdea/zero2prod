@@ -98,7 +98,7 @@ pub async fn change_password(
     password: SecretBox<String>,
     db_pool: &PgPool,
 ) -> anyhow::Result<()> {
-    let password_hash = spawn_blocking_with_tracing(move || compute_password_hash(password))
+    let password_hash = spawn_blocking_with_tracing(move || compute_password_hash(&password))
         .await?
         .context("Failed to hash password")?;
 
@@ -119,7 +119,7 @@ pub async fn change_password(
 }
 
 /// Compute a password hash based on the provided password
-fn compute_password_hash(password: SecretBox<String>) -> anyhow::Result<SecretBox<String>> {
+fn compute_password_hash(password: &SecretBox<String>) -> anyhow::Result<SecretBox<String>> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let password_hash = Argon2::new(
         Algorithm::Argon2id,

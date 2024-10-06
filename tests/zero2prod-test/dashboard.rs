@@ -35,7 +35,7 @@ async fn logout_clears_session_state(_pool_opts: PgPoolOptions, conn_opts: PgCon
 
     // Follow the redirect
     let html = app.get_login_html().await;
-    assert!(html.contains(r#"<p><i>You have successfully logged out</i></p>"#));
+    assert!(html.contains("<p><i>You have successfully logged out</i></p>"));
 
     // Attempt to access admin dashboard after logout
     let response = app.get_admin_dashboard().await;
