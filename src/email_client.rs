@@ -24,7 +24,7 @@ pub struct EmailClient {
     authorization_token: SecretBox<String>,
 }
 
-// TODO: Use a proper templating solution for our emails (e.g. tera)
+// TODO: Use a proper templating solution for our emails (e.g., tera)
 impl EmailClient {
     pub fn new(
         timeout: time::Duration,

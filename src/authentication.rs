@@ -25,10 +25,10 @@ pub enum AuthError {
     UnexpectedError(#[from] anyhow::Error),
 }
 
-/// Validate provided authentication credentials and return user_id if they are valid
+/// Validate provided authentication credentials and return `user_id` if they are valid
 #[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
 pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid, AuthError> {
-    // Fallback user_id and password hash to prevent timing attacks
+    // Fallback `user_id` and password hash to prevent timing attacks
     let mut user_id = None;
     let mut expected_password_hash = SecretBox::new(Box::new(FALLBACK_HASH.to_string()));
 

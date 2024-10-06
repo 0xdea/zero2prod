@@ -81,7 +81,7 @@ pub async fn newsletters(
     let creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
     tracing::Span::current().record("username", tracing::field::display(&creds.username));
 
-    // Validate credentials and extract corresponding user_id if they are valid
+    // Validate credentials and extract corresponding `user_id` if they are valid
     let user_id = validate_creds(creds, &db_pool).await.map_err(|e| match e {
         AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
         AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),

@@ -21,7 +21,7 @@ pub fn see_other(location: &str) -> HttpResponse {
         .finish()
 }
 
-/// Retrieve the username that matches a user_id from the database
+/// Retrieve the username that matches a `user_id` from the database
 #[tracing::instrument(name = "Get Username", skip(db_pool))]
 pub async fn get_username(user_id: Uuid, db_pool: &PgPool) -> Result<String, anyhow::Error> {
     let row = sqlx::query!(

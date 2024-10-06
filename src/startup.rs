@@ -14,7 +14,7 @@ use tracing_actix_web::TracingLogger;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::{
-    dashboard, healthcheck, home, login, login_form, newsletters, password, password_form,
+    dashboard, healthcheck, home, login, login_form, logout, newsletters, password, password_form,
     subscriptions, subscriptions_confirm,
 };
 
@@ -129,14 +129,15 @@ pub async fn run_server(
             .route("/login", web::post().to(login))
             .route("/healthcheck", web::get().to(healthcheck))
             .route("/subscriptions", web::post().to(subscriptions))
-            .route("/admin/dashboard", web::get().to(dashboard))
-            .route("/admin/password", web::get().to(password_form))
-            .route("/admin/password", web::post().to(password))
             .route(
                 "/subscriptions/confirm",
                 web::get().to(subscriptions_confirm),
             )
             .route("/newsletters", web::post().to(newsletters))
+            .route("/admin/dashboard", web::get().to(dashboard))
+            .route("/admin/password", web::get().to(password_form))
+            .route("/admin/password", web::post().to(password))
+            .route("/admin/logout", web::post().to(logout))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
