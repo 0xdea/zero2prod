@@ -17,6 +17,8 @@ use zero2prod::configuration::get_config;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
+use crate::FAKE_PASSWORD_LEN;
+
 /// Ensure the tracing stack is initialized only once
 static TRACING: sync::LazyLock<()> = sync::LazyLock::new(|| {
     let default_filter_level = "info".to_string();
@@ -279,7 +281,7 @@ impl TestUser {
         Self {
             user_id: Uuid::new_v4(),
             username: fake_username(),
-            password: fake_password(),
+            password: fake_password(FAKE_PASSWORD_LEN),
         }
     }
 
@@ -327,6 +329,7 @@ pub fn fake_username() -> String {
 }
 
 /// Generate a fake password
-pub fn fake_password() -> String {
-    Password(32..33).fake()
+#[allow(clippy::range_plus_one)]
+pub fn fake_password(len: usize) -> String {
+    Password(len..len + 1).fake()
 }

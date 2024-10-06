@@ -29,15 +29,25 @@ pub async fn password(
         return Ok(see_other("/login"));
     };
 
-    // Return error in flash message and redirect to /admin/password if new password fields do not match
+    // Return error in flash message and redirect back to /admin/password if new password fields do not match
     if form.new_password.expose_secret() != form.new_password2.expose_secret() {
-        FlashMessage::error(
-            "You entered two different new passwords - the field values must match",
-        )
-        .send();
+        FlashMessage::error("New passwords fields must match").send();
         return Ok(see_other("/admin/password"));
     }
 
+    // Return error in flash message and redirect back to /admin/password if new password is too short
+    if form.new_password.expose_secret().len() < 12 {
+        FlashMessage::error("The password must be at least 12 characters long").send();
+        return Ok(see_other("/admin/password"));
+    }
+
+    // Return error in flash message and redirect back to /admin/password if new password is too long
+    if form.new_password.expose_secret().len() > 128 {
+        FlashMessage::error("The password must contain a maximum of 128 characters").send();
+        return Ok(see_other("/admin/password"));
+    }
+
+    // Return error in flash message and redirect back to /admin/password if old password is incorrect
     let creds = Credentials {
         username,
         password: form.0.old_password,
@@ -49,7 +59,7 @@ pub async fn password(
                 FlashMessage::error("The current password is incorrect").send();
                 Ok(see_other("/admin/password"))
             }
-            AuthError::UnexpectedError(_) => Err(err500(e).into()),
+            AuthError::UnexpectedError(_) => Err(err500(e)),
         };
     }
     todo!()

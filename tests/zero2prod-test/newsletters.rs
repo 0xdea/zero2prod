@@ -3,6 +3,7 @@ use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 use crate::helpers::{fake_password, fake_username, init_test_db_pool, TestApp};
+use crate::FAKE_PASSWORD_LEN;
 
 #[sqlx::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
@@ -136,7 +137,7 @@ async fn non_existing_user_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgC
 
     // Invalid username and password
     let username = fake_username();
-    let password = fake_password();
+    let password = fake_password(FAKE_PASSWORD_LEN);
 
     let response = reqwest::Client::new()
         .post(format!("{}/newsletters", app.address))
@@ -168,7 +169,7 @@ async fn invalid_password_is_rejected(_pool_opts: PgPoolOptions, conn_opts: PgCo
 
     // Valid username and invalid password
     let username = &app.test_user.username;
-    let password = fake_password();
+    let password = fake_password(FAKE_PASSWORD_LEN);
     assert_ne!(app.test_user.password, password);
 
     let response = reqwest::Client::new()

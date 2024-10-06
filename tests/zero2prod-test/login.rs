@@ -3,6 +3,7 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use crate::helpers::{
     assert_is_redirect_to, fake_password, fake_username, init_test_db_pool, TestApp,
 };
+use crate::FAKE_PASSWORD_LEN;
 
 #[sqlx::test]
 async fn an_error_flash_message_is_set_on_failure(
@@ -13,7 +14,7 @@ async fn an_error_flash_message_is_set_on_failure(
     let app = TestApp::spawn(&db_pool).await;
     let body = serde_json::json!({
         "username": fake_username(),
-        "password": fake_password(),
+        "password": fake_password(FAKE_PASSWORD_LEN),
     });
 
     // Try to login
