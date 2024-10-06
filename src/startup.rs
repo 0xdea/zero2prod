@@ -32,7 +32,7 @@ pub struct HmacSecret(pub SecretBox<String>);
 
 impl Application {
     /// Build an application based on settings
-    pub async fn build(config: Settings) -> Result<Self, anyhow::Error> {
+    pub async fn build(config: Settings) -> anyhow::Result<Self> {
         // Connect to the database
         let db_pool = PgPoolOptions::new()
             .acquire_timeout(time::Duration::from_secs(2))
@@ -43,10 +43,7 @@ impl Application {
     }
 
     /// Build an application based on settings and database pool
-    pub async fn build_with_db_pool(
-        config: Settings,
-        db_pool: &PgPool,
-    ) -> Result<Self, anyhow::Error> {
+    pub async fn build_with_db_pool(config: Settings, db_pool: &PgPool) -> anyhow::Result<Self> {
         // Build an email client
         let base_url = config.email_client.base_url().expect("Invalid base URL");
         let sender_email = config
@@ -98,7 +95,7 @@ pub async fn run_server(
     base_url: String,
     hmac_secret: SecretBox<String>,
     redis_uri: SecretBox<String>,
-) -> Result<Server, anyhow::Error> {
+) -> anyhow::Result<Server> {
     // Extract secret key from HMAC secret
     let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
 

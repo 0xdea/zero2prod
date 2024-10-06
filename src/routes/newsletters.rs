@@ -126,7 +126,7 @@ pub async fn newsletters(
 #[tracing::instrument(name = "Get confirmed subscribers", skip(db_pool))]
 async fn get_confirmed_subscribers(
     db_pool: &PgPool,
-) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
+) -> anyhow::Result<Vec<anyhow::Result<ConfirmedSubscriber>>> {
     let confirmed_subscribers = sqlx::query!(
         r#"
         SELECT email FROM subscriptions
@@ -146,7 +146,7 @@ async fn get_confirmed_subscribers(
 }
 
 /// Basic authentication credential extractor
-fn basic_auth(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
+fn basic_auth(headers: &HeaderMap) -> anyhow::Result<Credentials> {
     // Extract the credential string from HTTP headers
     let header_val = headers
         .get("Authorization")

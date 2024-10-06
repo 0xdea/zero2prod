@@ -1,5 +1,6 @@
 use anyhow::Context;
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::password_hash::SaltString;
+use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -56,7 +57,7 @@ pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid
 async fn get_stored_creds(
     username: &str,
     db_pool: &PgPool,
-) -> Result<Option<(Uuid, SecretBox<String>)>, anyhow::Error> {
+) -> anyhow::Result<Option<(Uuid, SecretBox<String>)>> {
     let row = sqlx::query!(
         r#"
         SELECT user_id, password_hash
@@ -88,4 +89,45 @@ async fn verify_password_hash(
         .verify_password(password.expose_secret().as_bytes(), &password_hash)
         .context("Invalid password")
         .map_err(AuthError::InvalidCredentials)
+}
+
+/// Change password stored in the database for a specific `user_id`
+#[tracing::instrument(name = "Change password", skip(password, db_pool))]
+pub async fn change_password(
+    user_id: Uuid,
+    password: SecretBox<String>,
+    db_pool: &PgPool,
+) -> anyhow::Result<()> {
+    let password_hash = spawn_blocking_with_tracing(move || compute_password_hash(password))
+        .await?
+        .context("Failed to hash password")?;
+
+    sqlx::query!(
+        r#"
+        UPDATE users
+        SET password_hash = $1
+        WHERE user_id = $2
+        "#,
+        password_hash.expose_secret(),
+        user_id
+    )
+    .execute(db_pool)
+    .await
+    .context("Failed to change password")?;
+
+    Ok(())
+}
+
+/// Compute a password hash based on the provided password
+fn compute_password_hash(password: SecretBox<String>) -> anyhow::Result<SecretBox<String>> {
+    let salt = SaltString::generate(&mut rand::thread_rng());
+    let password_hash = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(15000, 2, 1, None).unwrap(),
+    )
+    .hash_password(password.expose_secret().as_bytes(), &salt)?
+    .to_string();
+
+    Ok(SecretBox::new(Box::new(password_hash)))
 }
