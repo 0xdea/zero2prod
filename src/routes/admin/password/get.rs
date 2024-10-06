@@ -12,7 +12,7 @@ use crate::utils::{err500, see_other};
 pub async fn password_form(
     session: TypedSession,
     flash_messages: IncomingFlashMessages,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> actix_web::Result<HttpResponse> {
     // Validate session
     if session.get_user_id().map_err(err500)?.is_none() {
         return Ok(see_other("/login"));

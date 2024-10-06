@@ -81,7 +81,7 @@ impl Application {
     }
 
     /// Run application until it is stopped
-    pub async fn run_until_stopped(self) -> Result<(), io::Error> {
+    pub async fn run_until_stopped(self) -> io::Result<()> {
         self.server.await
     }
 }

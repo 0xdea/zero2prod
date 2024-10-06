@@ -23,7 +23,7 @@ pub async fn password(
     form: web::Form<FormData>,
     session: TypedSession,
     db_pool: web::Data<PgPool>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> actix_web::Result<HttpResponse> {
     // Validate session and retrieve associated username and `user_id`
     let user_id = validate_session(&session)?;
     let username = get_username(user_id, &db_pool).await.map_err(err500)?;
@@ -71,7 +71,8 @@ pub async fn password(
 }
 
 /// Return `user_id` of authenticated users and reject users that are not authenticated
-fn validate_session(session: &TypedSession) -> Result<Uuid, actix_web::Error> {
+// TODO: see reject_unauth_users()
+fn validate_session(session: &TypedSession) -> actix_web::Result<Uuid> {
     session.get_user_id().map_err(err500)?.map_or_else(
         || {
             let response = see_other("/login");

@@ -119,7 +119,7 @@ pub async fn subscriptions(
 pub async fn insert_subscriber(
     new_subscriber: &NewSubscriber,
     transaction: &mut Transaction<'_, Postgres>,
-) -> Result<Uuid, sqlx::Error> {
+) -> sqlx::Result<Uuid> {
     let subscriber_id = Uuid::new_v4();
     let query = sqlx::query!(
         r#"
@@ -204,7 +204,7 @@ pub async fn send_confirmation_email(
     new_subscriber: NewSubscriber,
     base_url: &str,
     subscription_token: &str,
-) -> Result<(), reqwest::Error> {
+) -> reqwest::Result<()> {
     let confirmation_link =
         format!("{base_url}/subscriptions/confirm?subscription_token={subscription_token}");
     let html_body = &format!(

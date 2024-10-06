@@ -49,7 +49,7 @@ impl EmailClient {
         subject: &str,
         html_body: &str,
         text_body: &str,
-    ) -> Result<(), reqwest::Error> {
+    ) -> reqwest::Result<()> {
         let url = self.base_url.join("/email").expect("Cannot parse URL");
         let request_body = SendEmailRequest {
             from: self.sender.as_ref(),

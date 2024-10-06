@@ -12,7 +12,7 @@ use crate::utils::{err500, get_username, see_other};
 pub async fn dashboard(
     session: TypedSession,
     db_pool: web::Data<PgPool>,
-) -> Result<HttpResponse, actix_web::Error> {
+) -> actix_web::Result<HttpResponse> {
     // Validate session and retrieve associated username
     let username = if let Some(user_id) = session.get_user_id().map_err(err500)? {
         get_username(user_id, &db_pool).await.map_err(err500)?
