@@ -31,6 +31,7 @@ pub struct Application {
 pub struct ApplicationBaseUrl(pub String);
 
 /// HMAC secret type
+// TODO: change name?
 pub struct HmacSecret(pub SecretBox<String>);
 
 impl Application {

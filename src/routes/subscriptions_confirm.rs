@@ -6,7 +6,7 @@ use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::routes::helpers::error_chain_fmt;
+use crate::utils::error_chain_fmt;
 
 /// Web query parameters
 #[derive(serde::Deserialize)]

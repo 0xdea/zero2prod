@@ -1,6 +1,6 @@
 use validator::ValidateEmail;
 
-/// Email address
+/// Email address type
 #[derive(Debug)]
 pub struct EmailAddress(String);
 

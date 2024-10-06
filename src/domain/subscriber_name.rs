@@ -2,7 +2,7 @@
 // TODO: it would be better to use a whitelist approach instead
 const NAME_BLACKLIST: [char; 9] = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
-/// Subscriber name
+/// Subscriber name type
 #[derive(Debug)]
 pub struct SubscriberName(String);
 

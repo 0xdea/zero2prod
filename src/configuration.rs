@@ -84,7 +84,7 @@ impl EmailClientSettings {
     }
 }
 
-/// Possible runtime environments
+/// Available runtime environments
 pub enum Env {
     Development,
     Production,

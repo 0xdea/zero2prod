@@ -8,9 +8,8 @@ use secrecy::SecretBox;
 use sqlx::PgPool;
 
 use crate::authentication::{validate_creds, AuthError, Credentials};
-use crate::routes::helpers::error_chain_fmt;
 use crate::session_state::TypedSession;
-use crate::utils::see_other;
+use crate::utils::{error_chain_fmt, see_other};
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -51,7 +50,7 @@ pub async fn login(
     db_pool: web::Data<PgPool>,
     session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
-    // Extract authentication credentials
+    // Extract authentication credentials from form data
     let creds = Credentials {
         username: form.0.username,
         password: form.0.password,

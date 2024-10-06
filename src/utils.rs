@@ -1,10 +1,23 @@
-use std::fmt;
+use std::{error, fmt};
 
 use actix_web::http::header::LOCATION;
 use actix_web::HttpResponse;
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
+
+/// Provide a representation for any type that implements `Error`
+pub fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    writeln!(f, "{e}\n")?;
+
+    let mut current = e.source();
+    while let Some(cause) = current {
+        writeln!(f, "Caused by:\n\t{cause}")?;
+        current = cause.source();
+    }
+
+    Ok(())
+}
 
 /// Return an opaque Error 500 while preserving the error's cause for logging purposes
 pub fn err500<T>(err: T) -> actix_web::Error

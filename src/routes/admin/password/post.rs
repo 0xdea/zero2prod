@@ -24,25 +24,25 @@ pub async fn password(
     let user_id = user_id.into_inner();
     let username = get_username(*user_id, &db_pool).await.map_err(err500)?;
 
-    // Return error in flash message and redirect back to /admin/password if new password fields do not match
+    // Return error in flash message and redirect back to password form if new password fields do not match
     if form.new_password.expose_secret() != form.new_password2.expose_secret() {
         FlashMessage::error("New passwords fields must match").send();
         return Ok(see_other("/admin/password"));
     }
 
-    // Return error in flash message and redirect back to /admin/password if new password is too short
+    // Return error in flash message and redirect back to password form if new password is too short
     if form.new_password.expose_secret().len() < 12 {
         FlashMessage::error("The password must be at least 12 characters long").send();
         return Ok(see_other("/admin/password"));
     }
 
-    // Return error in flash message and redirect back to /admin/password if new password is too long
+    // Return error in flash message and redirect back to password form if new password is too long
     if form.new_password.expose_secret().len() > 128 {
         FlashMessage::error("The password must contain a maximum of 128 characters").send();
         return Ok(see_other("/admin/password"));
     }
 
-    // Return error in flash message and redirect back to /admin/password if old password is incorrect
+    // Return error in flash message and redirect back to password form if old password is incorrect
     let creds = Credentials {
         username,
         password: form.0.old_password,
@@ -58,7 +58,7 @@ pub async fn password(
         };
     }
 
-    // Change the password
+    // Change the password and return info in flash message
     change_password(*user_id, form.0.new_password, &db_pool)
         .await
         .map_err(err500)?;

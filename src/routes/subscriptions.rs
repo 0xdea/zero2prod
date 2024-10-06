@@ -11,8 +11,8 @@ use uuid::Uuid;
 
 use crate::domain::{EmailAddress, NewSubscriber, SubscriberName};
 use crate::email_client::EmailClient;
-use crate::routes::helpers::error_chain_fmt;
 use crate::startup::ApplicationBaseUrl;
+use crate::utils::error_chain_fmt;
 
 /// Web form data
 #[derive(serde::Deserialize)]
@@ -71,7 +71,7 @@ pub async fn subscriptions(
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,
 ) -> Result<HttpResponse, SubscribeError> {
-    // Parse subscriber data
+    // Parse form data to extract subscriber information
     let new_subscriber = form.0.try_into().map_err(SubscribeError::ValidationError)?;
 
     // Begin database transaction
@@ -80,7 +80,7 @@ pub async fn subscriptions(
         .await
         .context("Failed to acquire database connection to store a new subscriber")?;
 
-    // Insert subscriber
+    // Insert new subscriber
     let subscriber_id = insert_subscriber(&new_subscriber, &mut transaction)
         .await
         .context("Failed to insert new subscriber in the database")?;

@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     let subscriber = get_subscriber("zero2prod".into(), "info".into(), io::stdout);
     init_subscriber(subscriber);
 
-    // Get settings
+    // Retrieve settings
     let config = get_config().expect("Failed to read configuration");
 
     // Build the application and run it

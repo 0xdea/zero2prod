@@ -1,3 +1,5 @@
+// Utility to generate seed users to populate the database
+
 use std::{env, process};
 
 use argon2::password_hash::SaltString;

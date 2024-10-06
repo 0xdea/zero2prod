@@ -1,6 +1,5 @@
 mod admin;
 mod healthcheck;
-mod helpers;
 mod home;
 mod login;
 mod newsletters;

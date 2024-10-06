@@ -41,7 +41,7 @@ pub async fn reject_logged_out_users(
         TypedSession::from_request(http_request, payload).await
     }?;
 
-    // Check if the session state contains a `user_id`
+    // Check if the session state contains a `user_id`, otherwise return error
     if let Some(user_id) = session.get_user_id().map_err(err500)? {
         req.extensions_mut().insert(UserId(user_id));
         next.call(req).await

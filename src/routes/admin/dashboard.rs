@@ -16,6 +16,7 @@ pub async fn dashboard(
     let user_id = user_id.into_inner();
     let username = get_username(*user_id, &db_pool).await.map_err(err500)?;
 
+    // Display admin dashboard containing the retrieved `username`
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(include_str!("dashboard.html"), username)))

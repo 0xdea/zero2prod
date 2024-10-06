@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::routes::helpers::error_chain_fmt;
+use crate::utils::error_chain_fmt;
 
 /// Newsletter data
 #[derive(serde::Deserialize)]
@@ -64,7 +64,8 @@ impl ResponseError for PublishError {
     }
 }
 
-/// Newsletters handler to send newsletter issues
+/// Newsletters handler: send newsletter issues
+// TODO: port this functionality to session-based authentication
 #[allow(clippy::future_not_send)]
 #[tracing::instrument(
     name = "Publish a newsletter issue",
@@ -146,6 +147,7 @@ async fn get_confirmed_subscribers(
 }
 
 /// Basic authentication credential extractor
+// TODO: remove after porting to session-based authentication
 fn basic_auth(headers: &HeaderMap) -> anyhow::Result<Credentials> {
     // Extract the credential string from HTTP headers
     let header_val = headers
