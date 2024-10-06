@@ -4,20 +4,10 @@ use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
 
-use crate::session_state::TypedSession;
-use crate::utils::{err500, see_other};
-
 /// Admin password GET handler
-#[allow(clippy::future_not_send)]
 pub async fn password_form(
-    session: TypedSession,
     flash_messages: IncomingFlashMessages,
 ) -> actix_web::Result<HttpResponse> {
-    // Validate session
-    if session.get_user_id().map_err(err500)?.is_none() {
-        return Ok(see_other("/login"));
-    };
-
     // Process incoming flash messages
     let mut err_html = String::new();
     for m in flash_messages.iter() {

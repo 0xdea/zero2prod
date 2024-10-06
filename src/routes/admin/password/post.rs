@@ -1,12 +1,9 @@
-use actix_web::error::InternalError;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
-use uuid::Uuid;
 
-use crate::authentication::{change_password, validate_creds, AuthError, Credentials};
-use crate::session_state::TypedSession;
+use crate::authentication::{change_password, validate_creds, AuthError, Credentials, UserId};
 use crate::utils::{err500, get_username, see_other};
 
 /// Web form data
@@ -18,15 +15,14 @@ pub struct FormData {
 }
 
 /// Admin password POST handler
-#[allow(clippy::future_not_send)]
 pub async fn password(
     form: web::Form<FormData>,
-    session: TypedSession,
     db_pool: web::Data<PgPool>,
+    user_id: web::ReqData<UserId>,
 ) -> actix_web::Result<HttpResponse> {
-    // Validate session and retrieve associated username and `user_id`
-    let user_id = validate_session(&session)?;
-    let username = get_username(user_id, &db_pool).await.map_err(err500)?;
+    // Validate session and retrieve associated `user_id` and `username`
+    let user_id = user_id.into_inner();
+    let username = get_username(*user_id, &db_pool).await.map_err(err500)?;
 
     // Return error in flash message and redirect back to /admin/password if new password fields do not match
     if form.new_password.expose_secret() != form.new_password2.expose_secret() {
@@ -63,22 +59,9 @@ pub async fn password(
     }
 
     // Change the password
-    change_password(user_id, form.0.new_password, &db_pool)
+    change_password(*user_id, form.0.new_password, &db_pool)
         .await
         .map_err(err500)?;
     FlashMessage::info("Your password has been changed").send();
     Ok(see_other("/admin/password"))
-}
-
-/// Return `user_id` of authenticated users and reject users that are not authenticated
-// TODO: see reject_unauth_users()
-fn validate_session(session: &TypedSession) -> actix_web::Result<Uuid> {
-    session.get_user_id().map_err(err500)?.map_or_else(
-        || {
-            let response = see_other("/login");
-            let e = anyhow::anyhow!("The user has not logged in");
-            Err(InternalError::from_response(e, response).into())
-        },
-        Ok,
-    )
 }

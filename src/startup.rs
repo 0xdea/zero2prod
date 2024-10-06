@@ -1,21 +1,24 @@
+use std::{io, net, time};
+
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
+use actix_web::middleware::from_fn;
 use actix_web::{web, App, HttpServer};
 use actix_web_flash_messages::storage::CookieMessageStore;
 use actix_web_flash_messages::FlashMessagesFramework;
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
-use std::{io, net, time};
 use tracing_actix_web::TracingLogger;
 
+use crate::authentication::reject_logged_out_users;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::{
-    dashboard, healthcheck, home, login, login_form, logout, newsletters, password, password_form,
-    subscriptions, subscriptions_confirm,
+    confirm, dashboard, healthcheck, home, login, login_form, logout, newsletters, password,
+    password_form, subscriptions,
 };
 
 /// Application data
@@ -110,7 +113,6 @@ pub async fn run_server(
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
-    let hmac_secret = web::Data::new(HmacSecret(hmac_secret));
 
     // Start the HTTP server
     Ok(HttpServer::new(move || {
@@ -125,20 +127,20 @@ pub async fn run_server(
             .route("/login", web::get().to(login_form))
             .route("/login", web::post().to(login))
             .route("/healthcheck", web::get().to(healthcheck))
-            .route("/subscriptions", web::post().to(subscriptions))
-            .route(
-                "/subscriptions/confirm",
-                web::get().to(subscriptions_confirm),
-            )
             .route("/newsletters", web::post().to(newsletters))
-            .route("/admin/dashboard", web::get().to(dashboard))
-            .route("/admin/password", web::get().to(password_form))
-            .route("/admin/password", web::post().to(password))
-            .route("/admin/logout", web::post().to(logout))
+            .route("/subscriptions", web::post().to(subscriptions))
+            .route("/subscriptions/confirm", web::get().to(confirm))
+            .service(
+                web::scope("/admin")
+                    .wrap(from_fn(reject_logged_out_users))
+                    .route("/dashboard", web::get().to(dashboard))
+                    .route("/password", web::get().to(password_form))
+                    .route("/password", web::post().to(password))
+                    .route("/logout", web::post().to(logout)),
+            )
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
-            .app_data(hmac_secret.clone())
     })
     .listen(listener)?
     .run())

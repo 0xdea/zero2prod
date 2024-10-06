@@ -41,7 +41,7 @@ impl ResponseError for ConfirmError {
 /// Subscription confirmation handler
 // TODO: What happens if a user clicks on a confirmation link twice?
 #[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
-pub async fn subscriptions_confirm(
+pub async fn confirm(
     parameters: web::Query<Parameters>,
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, ConfirmError> {
