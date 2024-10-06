@@ -1,11 +1,9 @@
 use actix_web::http::header::ContentType;
 use actix_web::{web, HttpResponse};
-use anyhow::Context;
 use sqlx::PgPool;
-use uuid::Uuid;
 
 use crate::session_state::TypedSession;
-use crate::utils::{err500, see_other};
+use crate::utils::{err500, get_username, see_other};
 
 // TODO: implement a login-protected admin functionality to invite more admins/collaborators
 
@@ -15,6 +13,7 @@ pub async fn dashboard(
     session: TypedSession,
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    // Validate session and retrieve associated username
     let username = if let Some(user_id) = session.get_user_id().map_err(err500)? {
         get_username(user_id, &db_pool).await.map_err(err500)?
     } else {
@@ -24,22 +23,4 @@ pub async fn dashboard(
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(include_str!("dashboard.html"), username)))
-}
-
-/// Retrieve the username that matches a user_id from the database
-#[tracing::instrument(name = "Get Username", skip(db_pool))]
-async fn get_username(user_id: Uuid, db_pool: &PgPool) -> Result<String, anyhow::Error> {
-    let row = sqlx::query!(
-        r#"
-        SELECT username
-        FROM users
-        WHERE user_id = $1
-        "#,
-        user_id
-    )
-    .fetch_one(db_pool)
-    .await
-    .context("Failed to perform a query to fetch username based on user_id")?;
-
-    Ok(row.username)
 }
