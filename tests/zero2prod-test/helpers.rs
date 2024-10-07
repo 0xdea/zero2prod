@@ -188,14 +188,31 @@ impl TestApp {
     }
 
     /// POST to the newsletters endpoint
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    #[allow(clippy::future_not_send)]
+    pub async fn post_newsletters<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
         self.api_client
-            .post(format!("{}/newsletters", &self.address))
-            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
-            .json(&body)
+            .post(format!("{}/admin/newsletters", &self.address))
+            .form(&body)
             .send()
             .await
             .expect("Failed to send request")
+    }
+
+    /// GET to the newsletter endpoint
+    pub async fn get_newsletters(&self) -> reqwest::Response {
+        self.api_client
+            .get(format!("{}/admin/newsletters", &self.address))
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
+
+    /// GET to the newsletter endpoint and extract HTML
+    pub async fn get_newsletters_html(&self) -> String {
+        self.get_newsletters().await.text().await.unwrap()
     }
 
     /// POST to the login endpoint
@@ -205,7 +222,6 @@ impl TestApp {
         Body: serde::Serialize,
     {
         self.api_client
-            // Do not follow redirects
             .post(format!("{}/login", &self.address))
             .form(body)
             .send()
@@ -226,7 +242,7 @@ impl TestApp {
     }
 
     /// GET to the admin dashboard endpoint
-    pub async fn get_admin_dashboard(&self) -> reqwest::Response {
+    pub async fn get_dashboard(&self) -> reqwest::Response {
         self.api_client
             .get(format!("{}/admin/dashboard", &self.address))
             .send()
@@ -234,9 +250,9 @@ impl TestApp {
             .expect("Failed to send request")
     }
 
-    /// GET to the admin dashboard endpoint, extract HTML
+    /// GET to the admin dashboard endpoint and extract HTML
     pub async fn get_dashboard_html(&self) -> String {
-        self.get_admin_dashboard().await.text().await.unwrap()
+        self.get_dashboard().await.text().await.unwrap()
     }
 
     /// GET to the password change endpoint
