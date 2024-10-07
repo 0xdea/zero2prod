@@ -2,7 +2,7 @@ use std::fmt;
 
 use validator::ValidateEmail;
 
-/// Email address type
+/// Email address
 #[derive(Debug)]
 pub struct EmailAddress(String);
 

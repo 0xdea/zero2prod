@@ -9,7 +9,7 @@ use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
 use crate::utils::{err500, see_other};
 
-/// Web form data
+/// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
     title: String,
@@ -17,7 +17,7 @@ pub struct FormData {
     content_text: String,
 }
 
-/// Confirmed subscriber data
+/// Confirmed subscriber
 struct ConfirmedSubscriber {
     email: EmailAddress,
 }
@@ -39,7 +39,7 @@ pub async fn newsletters(
     // Get the list of subscribers
     let subscribers = get_confirmed_subscribers(&db_pool).await.map_err(err500)?;
 
-    // Send newsletter issue to each subscriber, handling errors and edge cases
+    // Send a newsletter issue to each subscriber, handling errors and edge cases
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {

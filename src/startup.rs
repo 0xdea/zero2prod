@@ -21,7 +21,7 @@ use crate::routes::{
     newsletters_form, password, password_form, subscriptions,
 };
 
-/// Application data
+/// Application
 pub struct Application {
     server: Server,
     port: u16,
@@ -30,8 +30,8 @@ pub struct Application {
 /// Application base URL
 pub struct ApplicationBaseUrl(pub String);
 
-/// HMAC secret type
-// TODO: change name?
+/// HMAC secret
+/// TODO: change name?
 pub struct HmacSecret(pub SecretBox<String>);
 
 impl Application {

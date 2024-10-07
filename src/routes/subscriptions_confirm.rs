@@ -14,7 +14,7 @@ pub struct Parameters {
     subscription_token: String,
 }
 
-/// Subscription confirmation error type
+/// Subscription confirmation error
 #[derive(thiserror::Error)]
 pub enum ConfirmError {
     #[error("There is no subscriber associated with the provided token")]
@@ -39,13 +39,13 @@ impl ResponseError for ConfirmError {
 }
 
 /// Subscription confirmation handler
-// TODO: What happens if a user clicks on a confirmation link twice?
+/// TODO: What happens if a user clicks on a confirmation link twice?
 #[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
 pub async fn confirm(
     parameters: web::Query<Parameters>,
     db_pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, ConfirmError> {
-    // Get subscriber id from subscription token
+    // Get `subscriber_id` from subscription token
     let subscriber_id = get_subscriber_id_from_token(&parameters.subscription_token, &db_pool)
         .await
         .context("Failed to retrieve the subscriber id associated with the provided token")?
@@ -59,8 +59,8 @@ pub async fn confirm(
     Ok(HttpResponse::Ok().finish())
 }
 
-/// Get subscriber id from subscription token
-// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
+/// Get `subscriber_id` from subscription token
+/// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
 #[tracing::instrument(
     name = "Getting subscriber id from subscription token",
     skip(subscription_token, db_pool)

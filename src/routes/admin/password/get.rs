@@ -14,7 +14,7 @@ pub async fn password_form(
         writeln!(msg, "<p><i>{}</i></p>", m.content()).unwrap();
     }
 
-    // Display password form with any flash messages
+    // Display password form with any flash message
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(include_str!("password_form.html"), msg)))

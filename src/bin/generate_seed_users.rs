@@ -8,7 +8,7 @@ use fake::faker::internet::en::{Password, Username};
 use fake::Fake;
 use uuid::Uuid;
 
-/// Seed user data
+/// Seed user
 #[derive(Debug)]
 pub struct SeedUser {
     pub user_id: Uuid,

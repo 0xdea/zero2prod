@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use crate::authentication::{change_password, validate_creds, AuthError, Credentials, UserId};
 use crate::utils::{err500, get_username, see_other};
 
-/// Web form data
+/// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
     old_password: SecretBox<String>,
@@ -58,7 +58,7 @@ pub async fn password(
         };
     }
 
-    // Change the password and return info in flash message
+    // Change the password and display flash message
     change_password(*user_id, form.0.new_password, &db_pool)
         .await
         .map_err(err500)?;

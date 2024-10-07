@@ -10,14 +10,14 @@ use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::session_state::TypedSession;
 use crate::utils::{error_chain_fmt, see_other};
 
-/// Web form data
+/// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
     username: String,
     password: SecretBox<String>,
 }
 
-/// Login error type
+/// Login error
 #[derive(thiserror::Error)]
 pub enum LoginError {
     #[error("Authentication failed")]

@@ -1,8 +1,8 @@
 /// Forbidden chars for subscriber name
-// TODO: it would be better to use a whitelist approach instead
+/// TODO: it would be better to use a whitelist approach instead
 const NAME_BLACKLIST: [char; 9] = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
-/// Subscriber name type
+/// Subscriber name
 #[derive(Debug)]
 pub struct SubscriberName(String);
 

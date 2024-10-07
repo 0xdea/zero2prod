@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::session_state::TypedSession;
 use crate::utils::{err500, see_other};
 
-/// User id type
+/// User identifier
 #[derive(Copy, Clone, Debug)]
 pub struct UserId(Uuid);
 

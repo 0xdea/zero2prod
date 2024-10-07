@@ -14,7 +14,7 @@ use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
 use crate::utils::error_chain_fmt;
 
-/// Web form data
+/// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
     email: String,
@@ -32,7 +32,7 @@ impl TryFrom<FormData> for NewSubscriber {
     }
 }
 
-/// Subscription error type
+/// Subscription error
 #[derive(thiserror::Error)]
 pub enum SubscribeError {
     #[error("{0}")]
@@ -110,8 +110,8 @@ pub async fn subscriptions(
     Ok(HttpResponse::Ok().finish())
 }
 
-/// Insert a subscriber into the database and return its id
-// TODO: What happens if a user tries to subscribe twice? Make sure that they receive two confirmation emails
+/// Insert a subscriber into the database and return its `subscriber_id`
+/// TODO: What happens if a user tries to subscribe twice? Make sure that they receive two confirmation emails
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
     skip(new_subscriber, transaction)
