@@ -52,10 +52,7 @@ pub async fn newsletters(
                     )
                     .await
                     .with_context(|| {
-                        format!(
-                            "Failed to send newsletter issue to {}",
-                            subscriber.email.as_ref()
-                        )
+                        format!("Failed to send newsletter issue to {}", subscriber.email)
                     })
                     .map_err(err500)?;
             }

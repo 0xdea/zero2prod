@@ -133,7 +133,7 @@ pub fn get_config() -> Result<Settings, ConfigError> {
         .add_source(File::from(config_dir.join(env.as_str())).required(true))
         // Environment variables (e.g., `ZERO2PROD__APPLICATION__APP_PORT=8888`
         // would set Settings.application.app_port to 8888)
-        .add_source(Environment::with_prefix("zero2prod").separator("__"))
+        .add_source(Environment::with_prefix("ZERO2PROD").separator("__"))
         .build()?
         .try_deserialize()
 }

@@ -1,8 +1,7 @@
 use std::fmt;
 
 use actix_web::error::InternalError;
-use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse, ResponseError};
+use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::SecretBox;
 use sqlx::PgPool;
@@ -30,12 +29,6 @@ pub enum LoginError {
 impl fmt::Debug for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error_chain_fmt(self, f)
-    }
-}
-
-impl ResponseError for LoginError {
-    fn status_code(&self) -> StatusCode {
-        StatusCode::SEE_OTHER
     }
 }
 

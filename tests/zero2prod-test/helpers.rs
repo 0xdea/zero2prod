@@ -38,7 +38,7 @@ static TRACING: sync::LazyLock<()> = sync::LazyLock::new(|| {
     };
 });
 
-/// Confirmation links
+/// Confirmation links embedded in the request to the email API
 pub struct ConfirmationLinks {
     pub html: Url,
     pub text: Url,

@@ -9,10 +9,7 @@ use uuid::Uuid;
 pub struct TypedSession(Session);
 
 impl FromRequest for TypedSession {
-    // Return the same error returned by the implementation of `FromRequest` for `Session`
     type Error = <Session as FromRequest>::Error;
-
-    // Wrap `TypedSession` into `Ready` to convert it into a `Future`
     type Future = Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {

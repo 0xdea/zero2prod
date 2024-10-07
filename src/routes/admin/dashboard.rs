@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::utils::{err500, get_username};
 
-// TODO: implement a login-protected admin functionality to invite more admins/collaborators
+// TODO: implement a login-protected admin functionality to invite other admins/collaborators
 
 /// Admin dashboard handler
 pub async fn dashboard(

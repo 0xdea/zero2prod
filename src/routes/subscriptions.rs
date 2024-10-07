@@ -169,8 +169,6 @@ impl error::Error for StoreTokenError {
     }
 }
 
-impl ResponseError for StoreTokenError {}
-
 /// Store subscription token in the database
 #[tracing::instrument(
     name = "Storing subscription token in the database",

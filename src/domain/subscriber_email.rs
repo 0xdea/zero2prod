@@ -1,3 +1,5 @@
+use std::fmt;
+
 use validator::ValidateEmail;
 
 /// Email address type
@@ -18,6 +20,12 @@ impl EmailAddress {
 impl AsRef<str> for EmailAddress {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl fmt::Display for EmailAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
