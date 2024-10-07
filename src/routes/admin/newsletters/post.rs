@@ -23,6 +23,7 @@ struct ConfirmedSubscriber {
 }
 
 /// Newsletters handler
+//noinspection RsLiveness
 #[allow(clippy::future_not_send)]
 #[tracing::instrument(
     name = "Publish a newsletter issue",
