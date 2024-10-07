@@ -1,31 +1,20 @@
-use std::fmt;
-
-use actix_web::http::header::{HeaderMap, HeaderValue};
-use actix_web::http::{header, StatusCode};
-use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
+use actix_web::web::ReqData;
+use actix_web::{web, HttpResponse};
+use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
-use base64::engine::general_purpose;
-use base64::Engine;
-use secrecy::SecretBox;
 use sqlx::PgPool;
 
-use crate::authentication::{validate_creds, AuthError, Credentials};
+use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::utils::error_chain_fmt;
+use crate::utils::{err500, see_other};
 
-/// Newsletter data
+/// Web form data
 #[derive(serde::Deserialize)]
-pub struct NewsletterData {
+pub struct FormData {
     title: String,
-    content: Content,
-}
-
-/// Newsletter content
-#[derive(serde::Deserialize)]
-pub struct Content {
-    html: String,
-    text: String,
+    content_html: String,
+    content_text: String,
 }
 
 /// Confirmed subscriber data
@@ -33,64 +22,21 @@ struct ConfirmedSubscriber {
     email: EmailAddress,
 }
 
-/// Publish error type
-#[derive(thiserror::Error)]
-pub enum PublishError {
-    #[error("Authentication failed")]
-    AuthError(#[source] anyhow::Error),
-    #[error(transparent)]
-    UnexpectedError(#[from] anyhow::Error),
-}
-
-impl fmt::Debug for PublishError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}
-
-impl ResponseError for PublishError {
-    fn error_response(&self) -> HttpResponse {
-        match self {
-            Self::AuthError(_) => {
-                let mut response = HttpResponse::new(StatusCode::UNAUTHORIZED);
-                let header_val = HeaderValue::from_str(r#"Basic realm="newsletters""#).unwrap();
-                response
-                    .headers_mut()
-                    .insert(header::WWW_AUTHENTICATE, header_val);
-                response
-            }
-            Self::UnexpectedError(_) => HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR),
-        }
-    }
-}
-
-/// Newsletters handler: send newsletter issues
-// TODO: port this functionality to session-based authentication
+/// Newsletters handler
 #[allow(clippy::future_not_send)]
 #[tracing::instrument(
     name = "Publish a newsletter issue",
-    skip(newsletter, db_pool, email_client, request),
-    fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
+    skip(newsletter, db_pool, email_client, user_id),
+    fields(user_id=%*user_id)
 )]
 pub async fn newsletters(
-    newsletter: web::Json<NewsletterData>,
+    newsletter: web::Form<FormData>,
     db_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
-    request: HttpRequest,
-) -> Result<HttpResponse, PublishError> {
-    // Extract authentication credentials
-    let creds = basic_auth(request.headers()).map_err(PublishError::AuthError)?;
-    tracing::Span::current().record("username", tracing::field::display(&creds.username));
-
-    // Validate credentials and extract corresponding `user_id` if they are valid
-    let user_id = validate_creds(creds, &db_pool).await.map_err(|e| match e {
-        AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
-        AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
-    })?;
-    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-
+    user_id: ReqData<UserId>,
+) -> actix_web::Result<HttpResponse> {
     // Get the list of subscribers
-    let subscribers = get_confirmed_subscribers(&db_pool).await?;
+    let subscribers = get_confirmed_subscribers(&db_pool).await.map_err(err500)?;
 
     // Send newsletter issue to each subscriber, handling errors and edge cases
     for subscriber in subscribers {
@@ -100,8 +46,8 @@ pub async fn newsletters(
                     .send_email(
                         &subscriber.email,
                         &newsletter.title,
-                        &newsletter.content.html,
-                        &newsletter.content.text,
+                        &newsletter.content_html,
+                        &newsletter.content_text,
                     )
                     .await
                     .with_context(|| {
@@ -109,7 +55,8 @@ pub async fn newsletters(
                             "Failed to send newsletter issue to {}",
                             subscriber.email.as_ref()
                         )
-                    })?;
+                    })
+                    .map_err(err500)?;
             }
             Err(error) => {
                 tracing::warn!(
@@ -120,7 +67,9 @@ pub async fn newsletters(
         }
     }
 
-    Ok(HttpResponse::Ok().finish())
+    // Return to the endpoint and display flash message
+    FlashMessage::info("The newsletter issue has been published!").send();
+    Ok(see_other("/admin/newsletters"))
 }
 
 /// Get the list of confirmed subscribers with valid email addresses
@@ -144,39 +93,4 @@ async fn get_confirmed_subscribers(
     .collect();
 
     Ok(confirmed_subscribers)
-}
-
-/// Basic authentication credential extractor
-// TODO: remove after porting to session-based authentication
-fn basic_auth(headers: &HeaderMap) -> anyhow::Result<Credentials> {
-    // Extract the credential string from HTTP headers
-    let header_val = headers
-        .get("Authorization")
-        .context("The 'Authorization' header was not found")?
-        .to_str()
-        .context("The 'Authorization' header contains invalid characters")?;
-    let encoded_str = header_val
-        .strip_prefix("Basic ")
-        .context("The authorization scheme was not 'Basic'")?;
-    let decoded_bytes = general_purpose::STANDARD
-        .decode(encoded_str)
-        .context("Failed to decode the credential string")?;
-    let decoded_str = String::from_utf8(decoded_bytes)
-        .context("The decoded credential string was not valid UTF-8")?;
-
-    // Extract username and password from the decoded credential string
-    let mut creds = decoded_str.splitn(2, ':');
-    let username = creds
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("A username must be provided in 'Basic' auth"))?
-        .to_string();
-    let password = creds
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("A password must be provided in 'Basic' auth"))?
-        .to_string();
-
-    Ok(Credentials {
-        username,
-        password: SecretBox::new(Box::new(password)),
-    })
 }
