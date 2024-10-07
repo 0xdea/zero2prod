@@ -335,6 +335,15 @@ impl TestUser {
         .await
         .expect("Failed to store test user in the database");
     }
+
+    /// Login to the test application
+    pub async fn login(&self, app: &TestApp) -> reqwest::Response {
+        app.post_login(&serde_json::json!({
+            "username": &self.username,
+            "password": &self.password
+        }))
+        .await
+    }
 }
 
 /// Initialize test database pool

@@ -21,12 +21,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
         .await;
 
     // Login
-    // TODO: create a login helper `app.test_user.login()`
-    let body = serde_json::json!({
-        "username": &app.test_user.username,
-        "password": &app.test_user.password,
-    });
-    app.post_login(&body).await;
+    app.test_user.login(&app).await;
 
     // Publish the newsletter
     let body = serde_json::json!({
@@ -62,11 +57,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
         .await;
 
     // Login
-    let body = serde_json::json!({
-        "username": &app.test_user.username,
-        "password": &app.test_user.password,
-    });
-    app.post_login(&body).await;
+    app.test_user.login(&app).await;
 
     // Publish the newsletter
     let body = serde_json::json!({
@@ -93,11 +84,7 @@ async fn newsletters_returns_400_for_invalid_data(
     let app = TestApp::spawn(&db_pool).await;
 
     // Login
-    let body = serde_json::json!({
-        "username": &app.test_user.username,
-        "password": &app.test_user.password,
-    });
-    app.post_login(&body).await;
+    app.test_user.login(&app).await;
 
     // Try to publish the newsletter with invalid data
     let test_cases = vec![
