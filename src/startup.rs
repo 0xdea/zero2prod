@@ -17,8 +17,8 @@ use crate::authentication::reject_logged_out_users;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::{
-    confirm, dashboard, healthcheck, home, login, login_form, logout, newsletters, password,
-    password_form, subscriptions,
+    confirm, dashboard, healthcheck, home, login, login_form, logout, newsletters,
+    newsletters_form, password, password_form, subscriptions,
 };
 
 /// Application data
@@ -128,13 +128,14 @@ pub async fn run_server(
             .route("/login", web::get().to(login_form))
             .route("/login", web::post().to(login))
             .route("/healthcheck", web::get().to(healthcheck))
-            .route("/newsletters", web::post().to(newsletters))
             .route("/subscriptions", web::post().to(subscriptions))
             .route("/subscriptions/confirm", web::get().to(confirm))
             .service(
                 web::scope("/admin")
                     .wrap(from_fn(reject_logged_out_users))
                     .route("/dashboard", web::get().to(dashboard))
+                    .route("/newsletters", web::get().to(newsletters_form))
+                    .route("/newsletters", web::post().to(newsletters))
                     .route("/password", web::get().to(password_form))
                     .route("/password", web::post().to(password))
                     .route("/logout", web::post().to(logout)),

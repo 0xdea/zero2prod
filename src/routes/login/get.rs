@@ -12,7 +12,7 @@ pub async fn login_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
         writeln!(msg, "<p><i>{}</i></p>", m.content()).unwrap();
     }
 
-    // Display login form with any error message
+    // Display login form with any flash messages
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(include_str!("login_form.html"), msg))

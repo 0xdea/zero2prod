@@ -4,18 +4,16 @@ use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
 
-/// Admin password GET handler
-pub async fn password_form(
-    flash_messages: IncomingFlashMessages,
-) -> actix_web::Result<HttpResponse> {
+/// Newsletters GET handler
+pub async fn newsletters_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
     // Process incoming flash messages
     let mut msg = String::new();
     for m in flash_messages.iter() {
         writeln!(msg, "<p><i>{}</i></p>", m.content()).unwrap();
     }
 
-    // Display password form with any flash messages
-    Ok(HttpResponse::Ok()
+    // Display newsletters form with any flash message
+    HttpResponse::Ok()
         .content_type(ContentType::html())
-        .body(format!(include_str!("password_form.html"), msg)))
+        .body(format!(include_str!("newsletters_form.html"), msg))
 }
