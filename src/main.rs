@@ -1,6 +1,6 @@
 use std::io;
 
-use zero2prod::configuration::get_config;
+use zero2prod::configuration::Settings;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -11,7 +11,7 @@ async fn main() -> anyhow::Result<()> {
     init_subscriber(subscriber);
 
     // Retrieve settings
-    let config = get_config().expect("Failed to read configuration");
+    let config = Settings::get_config().expect("Failed to read configuration");
 
     // Build the application and run it
     let application = Application::build(config).await?;

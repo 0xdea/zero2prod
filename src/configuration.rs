@@ -19,6 +19,32 @@ pub struct Settings {
     pub redis_uri: SecretBox<String>,
 }
 
+impl Settings {
+    /// Get settings from configuration files
+    pub fn get_config() -> Result<Settings, ConfigError> {
+        let path = env::current_dir().expect("Failed to determine the current directory");
+        let config_dir = path.join("config");
+
+        // Detect the running environment (default: `dev`)
+        let env: Env = env::var("APP_ENVIRONMENT")
+            .unwrap_or_else(|_| "dev".into())
+            .try_into()
+            .expect("Failed to parse APP_ENVIRONMENT");
+
+        // Read the configuration from files and environment variables
+        Config::builder()
+            // Base configuration file
+            .add_source(File::from(config_dir.join("base.yaml")).required(true))
+            // Environment-specific configuration file
+            .add_source(File::from(config_dir.join(env.as_str())).required(true))
+            // Environment variables (e.g., `ZERO2PROD__APPLICATION__APP_PORT=8888`
+            // would set Settings.application.app_port to 8888)
+            .add_source(Environment::with_prefix("ZERO2PROD").separator("__"))
+            .build()?
+            .try_deserialize()
+    }
+}
+
 /// Application settings
 #[derive(serde::Deserialize)]
 pub struct ApplicationSettings {
@@ -112,28 +138,4 @@ impl TryFrom<String> for Env {
             )),
         }
     }
-}
-
-/// Get settings from configuration files
-pub fn get_config() -> Result<Settings, ConfigError> {
-    let path = env::current_dir().expect("Failed to determine the current directory");
-    let config_dir = path.join("config");
-
-    // Detect the running environment (default: `dev`)
-    let env: Env = env::var("APP_ENVIRONMENT")
-        .unwrap_or_else(|_| "dev".into())
-        .try_into()
-        .expect("Failed to parse APP_ENVIRONMENT");
-
-    // Read the configuration from files and environment variables
-    Config::builder()
-        // Base configuration file
-        .add_source(File::from(config_dir.join("base.yaml")).required(true))
-        // Environment-specific configuration file
-        .add_source(File::from(config_dir.join(env.as_str())).required(true))
-        // Environment variables (e.g., `ZERO2PROD__APPLICATION__APP_PORT=8888`
-        // would set Settings.application.app_port to 8888)
-        .add_source(Environment::with_prefix("ZERO2PROD").separator("__"))
-        .build()?
-        .try_deserialize()
 }

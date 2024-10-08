@@ -1,10 +1,10 @@
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
-use crate::helpers::{init_test_db_pool, TestApp};
+use crate::helpers::TestApp;
 
 #[sqlx::test]
 async fn healthcheck_works(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     let response = reqwest::Client::new()

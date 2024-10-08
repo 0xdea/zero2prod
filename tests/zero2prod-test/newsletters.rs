@@ -2,14 +2,14 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-use crate::helpers::{assert_is_redirect_to, init_test_db_pool, TestApp};
+use crate::helpers::{assert_is_redirect_to, TestApp};
 
 #[sqlx::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     // Create an unconfirmed subscriber for which we expect no newsletters
@@ -44,7 +44,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     // Create a confirmed subscriber for which we expect one newsletter
@@ -80,7 +80,7 @@ async fn newsletters_returns_400_for_invalid_data(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     // Login
@@ -129,7 +129,7 @@ async fn you_must_be_logged_in_to_see_the_newsletter_form(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     // Try to access the newsletters form
@@ -144,7 +144,7 @@ async fn you_must_be_logged_in_to_publish_a_newsletter(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
     let app = TestApp::spawn(&db_pool).await;
 
     // Try to publish the newsletter

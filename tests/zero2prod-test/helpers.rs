@@ -13,7 +13,7 @@ use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use zero2prod::configuration::get_config;
+use zero2prod::configuration::Settings;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -54,6 +54,11 @@ pub struct TestApp {
 }
 
 impl TestApp {
+    /// Initialize test database pool
+    pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
+        PgPoolOptions::new().connect_lazy_with(conn_opts)
+    }
+
     /// Spin up a test application and return its data
     pub async fn spawn(db_pool: &PgPool) -> Self {
         // Initialize logging
@@ -67,7 +72,7 @@ impl TestApp {
 
         // Get settings and modify them for testing
         let config = {
-            let mut c = get_config().expect("Failed to read configuration");
+            let mut c = Settings::get_config().expect("Failed to read configuration");
             // Listen on a random TCP port
             c.application.app_port = 0;
             // Use the mock server as email API
@@ -344,11 +349,6 @@ impl TestUser {
         }))
         .await
     }
-}
-
-/// Initialize test database pool
-pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
-    PgPoolOptions::new().connect_lazy_with(conn_opts)
 }
 
 /// Assert: response is a redirect to the specified location
