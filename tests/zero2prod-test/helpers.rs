@@ -310,8 +310,8 @@ impl TestUser {
     pub fn generate() -> Self {
         Self {
             user_id: Uuid::new_v4(),
-            username: fake_username(),
-            password: fake_password(FAKE_PASSWORD_LEN),
+            username: Self::fake_username(),
+            password: Self::fake_password(FAKE_PASSWORD_LEN),
         }
     }
 
@@ -349,21 +349,21 @@ impl TestUser {
         }))
         .await
     }
+
+    /// Generate a fake username
+    pub fn fake_username() -> String {
+        Username().fake()
+    }
+
+    /// Generate a fake password
+    #[allow(clippy::range_plus_one)]
+    pub fn fake_password(len: usize) -> String {
+        Password(len..len + 1).fake()
+    }
 }
 
 /// Assert: response is a redirect to the specified location
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
     assert_eq!(response.status(), 303);
     assert_eq!(response.headers().get("Location").unwrap(), location);
-}
-
-/// Generate a fake username
-pub fn fake_username() -> String {
-    Username().fake()
-}
-
-/// Generate a fake password
-#[allow(clippy::range_plus_one)]
-pub fn fake_password(len: usize) -> String {
-    Password(len..len + 1).fake()
 }
