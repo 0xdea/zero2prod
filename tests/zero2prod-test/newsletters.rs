@@ -1,4 +1,5 @@
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -155,6 +156,48 @@ async fn you_must_be_logged_in_to_publish_a_newsletter(
     });
     let response = app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/login");
+
+    db_pool.close().await;
+}
+
+#[sqlx::test]
+async fn newsletter_creation_is_idempotent(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
+    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let app = TestApp::spawn(&db_pool).await;
+
+    // Create a confirmed subscriber for which we expect only one newsletter
+    app.create_confirmed_subscriber().await;
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    // Login
+    app.test_user.login(&app).await;
+
+    // Publish the newsletter
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content_text": "Newsletter body as plain text",
+        "content_html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string()
+    });
+    let response = app.post_newsletters(&body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Follow the redirect
+    let html = app.get_newsletters_html().await;
+    assert!(html.contains("<p><i>The newsletter issue has been published!</i></p>"));
+
+    // Try to publish the newsletter again
+    let response = app.post_newsletters(&body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Follow the redirect
+    let html = app.get_newsletters_html().await;
+    assert!(html.contains("<p><i>The newsletter issue has been published!</i></p>"));
 
     db_pool.close().await;
 }
