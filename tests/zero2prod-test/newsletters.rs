@@ -1,7 +1,8 @@
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
+
+use zero2prod::idempotency::IdempotencyKey;
 
 use crate::helpers::{assert_is_redirect_to, TestApp};
 
@@ -10,7 +11,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Create an unconfirmed subscriber for which we expect no newsletters
@@ -29,7 +30,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
         "title": "Newsletter title",
         "content_text": "Newsletter body as plain text",
         "content_html": "<p>Newsletter body as HTML</p>",
-        "idempotency_key": Uuid::new_v4().to_string()
+        "idempotency_key": IdempotencyKey::generate(),
     });
     let response = app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/admin/newsletters");
@@ -46,7 +47,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Create a confirmed subscriber for which we expect one newsletter
@@ -66,7 +67,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
         "title": "Newsletter title",
         "content_text": "Newsletter body as plain text",
         "content_html": "<p>Newsletter body as HTML</p>",
-        "idempotency_key": Uuid::new_v4().to_string()
+        "idempotency_key": IdempotencyKey::generate()
     });
     let response = app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/admin/newsletters");
@@ -83,7 +84,7 @@ async fn newsletters_returns_400_for_invalid_data(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Login
@@ -132,7 +133,7 @@ async fn you_must_be_logged_in_to_see_the_newsletter_form(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Try to access the newsletters form
@@ -147,7 +148,7 @@ async fn you_must_be_logged_in_to_publish_a_newsletter(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Try to publish the newsletter
@@ -155,7 +156,7 @@ async fn you_must_be_logged_in_to_publish_a_newsletter(
         "title": "Newsletter title",
         "content_text": "Newsletter body as plain text",
         "content_html": "<p>Newsletter body as HTML</p>",
-        "idempotency_key": Uuid::new_v4().to_string()
+        "idempotency_key": IdempotencyKey::generate()
     });
     let response = app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/login");
@@ -165,7 +166,7 @@ async fn you_must_be_logged_in_to_publish_a_newsletter(
 
 #[sqlx::test]
 async fn newsletter_creation_is_idempotent(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Create a confirmed subscriber for which we expect only one newsletter
@@ -185,7 +186,7 @@ async fn newsletter_creation_is_idempotent(_pool_opts: PgPoolOptions, conn_opts:
         "title": "Newsletter title",
         "content_text": "Newsletter body as plain text",
         "content_html": "<p>Newsletter body as HTML</p>",
-        "idempotency_key": Uuid::new_v4().to_string()
+        "idempotency_key": IdempotencyKey::generate()
     });
     let response = app.post_newsletters(&body).await;
     assert_is_redirect_to(&response, "/admin/newsletters");

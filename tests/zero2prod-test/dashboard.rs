@@ -7,7 +7,7 @@ async fn you_must_be_logged_in_to_access_the_admin_dashboard(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     let response = app.get_dashboard().await;
@@ -18,7 +18,7 @@ async fn you_must_be_logged_in_to_access_the_admin_dashboard(
 
 #[sqlx::test]
 async fn logout_clears_session_state(_pool_opts: PgPoolOptions, conn_opts: PgConnectOptions) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Login

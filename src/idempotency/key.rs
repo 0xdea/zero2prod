@@ -1,6 +1,23 @@
+use std::fmt::{Display, Formatter};
+use uuid::Uuid;
+
 /// Idempotency key
-#[derive(Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct IdempotencyKey(String);
+
+impl IdempotencyKey {
+    /// Generate idempotency key
+    /// TODO: update when we are ready with the backend implementation
+    pub fn generate() -> Self {
+        Self(Uuid::new_v4().into())
+    }
+}
+
+impl Display for IdempotencyKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl TryFrom<String> for IdempotencyKey {
     type Error = anyhow::Error;

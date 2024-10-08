@@ -8,7 +8,7 @@ use sqlx::PgPool;
 
 use crate::authentication::{validate_creds, AuthError, Credentials};
 use crate::session_state::TypedSession;
-use crate::utils::{error_chain_fmt, see_other};
+use crate::utils::{e303_see_other, error_chain_fmt};
 
 /// Web form
 #[derive(serde::Deserialize)]
@@ -60,7 +60,7 @@ pub async fn login(
             session
                 .insert_user_id(user_id)
                 .map_err(|e| redirect_to_login_with_error(LoginError::UnexpectedError(e.into())))?;
-            Ok(see_other("/admin/dashboard"))
+            Ok(e303_see_other("/admin/dashboard"))
         }
 
         // Invalid credentials: return error in flash message and redirect to login
@@ -77,5 +77,5 @@ pub async fn login(
 /// Redirect to the login page with an error message
 fn redirect_to_login_with_error(err: LoginError) -> InternalError<LoginError> {
     FlashMessage::error(err.to_string()).send();
-    InternalError::from_response(err, see_other("/login"))
+    InternalError::from_response(err, e303_see_other("/login"))
 }

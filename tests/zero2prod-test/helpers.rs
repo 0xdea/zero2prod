@@ -55,7 +55,7 @@ pub struct TestApp {
 
 impl TestApp {
     /// Initialize test database pool
-    pub async fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
+    pub fn init_test_db_pool(conn_opts: PgConnectOptions) -> PgPool {
         PgPoolOptions::new().connect_lazy_with(conn_opts)
     }
 

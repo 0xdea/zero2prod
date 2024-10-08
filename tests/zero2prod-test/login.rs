@@ -8,7 +8,7 @@ async fn an_error_flash_message_is_set_on_failure(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Try to login
@@ -35,7 +35,7 @@ async fn redirect_to_admin_dashboard_after_login_success(
     _pool_opts: PgPoolOptions,
     conn_opts: PgConnectOptions,
 ) {
-    let db_pool = TestApp::init_test_db_pool(conn_opts).await;
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
     // Login

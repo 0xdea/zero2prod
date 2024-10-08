@@ -4,7 +4,7 @@ use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
 
 use crate::authentication::{change_password, validate_creds, AuthError, Credentials, UserId};
-use crate::utils::{err500, get_username, see_other};
+use crate::utils::{e303_see_other, e500_internal_server_error, get_username};
 
 /// Web form
 #[derive(serde::Deserialize)]
@@ -22,24 +22,26 @@ pub async fn password(
 ) -> actix_web::Result<HttpResponse> {
     // Validate session and retrieve associated `user_id` and `username`
     let user_id = user_id.into_inner();
-    let username = get_username(*user_id, &db_pool).await.map_err(err500)?;
+    let username = get_username(*user_id, &db_pool)
+        .await
+        .map_err(e500_internal_server_error)?;
 
     // Return error in flash message and redirect back to password form if new password fields do not match
     if form.new_password.expose_secret() != form.new_password2.expose_secret() {
         FlashMessage::error("New passwords fields must match").send();
-        return Ok(see_other("/admin/password"));
+        return Ok(e303_see_other("/admin/password"));
     }
 
     // Return error in flash message and redirect back to password form if new password is too short
     if form.new_password.expose_secret().len() < 12 {
         FlashMessage::error("The password must be at least 12 characters long").send();
-        return Ok(see_other("/admin/password"));
+        return Ok(e303_see_other("/admin/password"));
     }
 
     // Return error in flash message and redirect back to password form if new password is too long
     if form.new_password.expose_secret().len() > 128 {
         FlashMessage::error("The password must contain a maximum of 128 characters").send();
-        return Ok(see_other("/admin/password"));
+        return Ok(e303_see_other("/admin/password"));
     }
 
     // Return error in flash message and redirect back to password form if old password is incorrect
@@ -52,16 +54,16 @@ pub async fn password(
         return match e {
             AuthError::InvalidCredentials(_) => {
                 FlashMessage::error("The current password is incorrect").send();
-                Ok(see_other("/admin/password"))
+                Ok(e303_see_other("/admin/password"))
             }
-            AuthError::UnexpectedError(_) => Err(err500(e)),
+            AuthError::UnexpectedError(_) => Err(e500_internal_server_error(e)),
         };
     }
 
     // Change the password and display flash message
     change_password(*user_id, form.0.new_password, &db_pool)
         .await
-        .map_err(err500)?;
+        .map_err(e500_internal_server_error)?;
     FlashMessage::info("Your password has been changed").send();
-    Ok(see_other("/admin/password"))
+    Ok(e303_see_other("/admin/password"))
 }

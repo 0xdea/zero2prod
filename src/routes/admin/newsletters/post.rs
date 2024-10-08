@@ -8,7 +8,7 @@ use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
 use crate::idempotency::IdempotencyKey;
-use crate::utils::{err400, err500, see_other};
+use crate::utils::{e303_see_other, e400_bad_request, e500_internal_server_error};
 
 /// Web form
 #[derive(serde::Deserialize)]
@@ -44,8 +44,10 @@ pub async fn newsletters(
         content_text,
         idempotency_key,
     } = newsletter.0;
-    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(err400)?;
-    let subscribers = get_confirmed_subscribers(&db_pool).await.map_err(err500)?;
+    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400_bad_request)?;
+    let subscribers = get_confirmed_subscribers(&db_pool)
+        .await
+        .map_err(e500_internal_server_error)?;
 
     // Send a newsletter issue to each subscriber, handling errors and edge cases
     for subscriber in subscribers {
@@ -57,7 +59,7 @@ pub async fn newsletters(
                     .with_context(|| {
                         format!("Failed to send newsletter issue to {}", subscriber.email)
                     })
-                    .map_err(err500)?;
+                    .map_err(e500_internal_server_error)?;
             }
             Err(error) => {
                 tracing::warn!(
@@ -70,7 +72,7 @@ pub async fn newsletters(
 
     // Return to the endpoint and display flash message
     FlashMessage::info("The newsletter issue has been published!").send();
-    Ok(see_other("/admin/newsletters"))
+    Ok(e303_see_other("/admin/newsletters"))
 }
 
 /// Get the list of confirmed subscribers with valid email addresses

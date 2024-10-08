@@ -1,9 +1,9 @@
 use std::fmt::Write;
 
+use crate::idempotency::IdempotencyKey;
 use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
-use uuid::Uuid;
 
 /// Newsletters GET handler
 pub async fn newsletters_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
@@ -14,7 +14,7 @@ pub async fn newsletters_form(flash_messages: IncomingFlashMessages) -> HttpResp
     }
 
     // Display newsletters form with any flash message
-    let idempotency_key = Uuid::new_v4();
+    let idempotency_key = IdempotencyKey::generate();
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(format!(

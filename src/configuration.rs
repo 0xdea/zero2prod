@@ -21,7 +21,7 @@ pub struct Settings {
 
 impl Settings {
     /// Get settings from configuration files
-    pub fn get_config() -> Result<Settings, ConfigError> {
+    pub fn get_config() -> Result<Self, ConfigError> {
         let path = env::current_dir().expect("Failed to determine the current directory");
         let config_dir = path.join("config");
 

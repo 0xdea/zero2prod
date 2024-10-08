@@ -20,23 +20,23 @@ pub fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt
 }
 
 /// Return an opaque Error 500 while preserving the error's cause for logging purposes
-pub fn err500<T>(err: T) -> actix_web::Error
+pub fn e500_internal_server_error<T>(e: T) -> actix_web::Error
 where
     T: fmt::Debug + fmt::Display + 'static,
 {
-    actix_web::error::ErrorInternalServerError(err)
+    actix_web::error::ErrorInternalServerError(e)
 }
 
 /// Return an Error 400 with the user-representation of the validation error as body
-pub fn err400<T>(err: T) -> actix_web::Error
+pub fn e400_bad_request<T>(e: T) -> actix_web::Error
 where
     T: fmt::Debug + fmt::Display + 'static,
 {
-    actix_web::error::ErrorBadRequest(err)
+    actix_web::error::ErrorBadRequest(e)
 }
 
 /// Return an Error 303 and redirect to the specified location
-pub fn see_other(location: &str) -> HttpResponse {
+pub fn e303_see_other(location: &str) -> HttpResponse {
     HttpResponse::SeeOther()
         .insert_header((LOCATION, location))
         .finish()

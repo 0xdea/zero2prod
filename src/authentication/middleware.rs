@@ -9,7 +9,7 @@ use actix_web::{FromRequest, HttpMessage};
 use uuid::Uuid;
 
 use crate::session_state::TypedSession;
-use crate::utils::{err500, see_other};
+use crate::utils::{e303_see_other, e500_internal_server_error};
 
 /// User identifier
 #[derive(Copy, Clone, Debug)]
@@ -42,11 +42,11 @@ pub async fn reject_logged_out_users(
     }?;
 
     // Check if the session state contains a `user_id`, otherwise return error
-    if let Some(user_id) = session.get_user_id().map_err(err500)? {
+    if let Some(user_id) = session.get_user_id().map_err(e500_internal_server_error)? {
         req.extensions_mut().insert(UserId(user_id));
         next.call(req).await
     } else {
-        let response = see_other("/login");
+        let response = e303_see_other("/login");
         let e = anyhow::anyhow!("The user is not logged in");
         Err(InternalError::from_response(e, response).into())
     }
