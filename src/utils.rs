@@ -27,6 +27,14 @@ where
     actix_web::error::ErrorInternalServerError(err)
 }
 
+/// Return an Error 400 with the user-representation of the validation error as body
+pub fn err400<T>(err: T) -> actix_web::Error
+where
+    T: fmt::Debug + fmt::Display + 'static,
+{
+    actix_web::error::ErrorBadRequest(err)
+}
+
 /// Return an Error 303 and redirect to the specified location
 pub fn see_other(location: &str) -> HttpResponse {
     HttpResponse::SeeOther()

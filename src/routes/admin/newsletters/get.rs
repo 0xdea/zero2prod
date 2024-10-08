@@ -3,6 +3,7 @@ use std::fmt::Write;
 use actix_web::http::header::ContentType;
 use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
+use uuid::Uuid;
 
 /// Newsletters GET handler
 pub async fn newsletters_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
@@ -13,7 +14,11 @@ pub async fn newsletters_form(flash_messages: IncomingFlashMessages) -> HttpResp
     }
 
     // Display newsletters form with any flash message
+    let idempotency_key = Uuid::new_v4();
     HttpResponse::Ok()
         .content_type(ContentType::html())
-        .body(format!(include_str!("newsletters_form.html"), msg))
+        .body(format!(
+            include_str!("newsletters_form.html"),
+            msg, idempotency_key
+        ))
 }

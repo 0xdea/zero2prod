@@ -7,7 +7,8 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::utils::{err500, see_other};
+use crate::idempotency::IdempotencyKey;
+use crate::utils::{err400, err500, see_other};
 
 /// Web form
 #[derive(serde::Deserialize)]
@@ -15,6 +16,7 @@ pub struct FormData {
     title: String,
     content_html: String,
     content_text: String,
+    idempotency_key: String,
 }
 
 /// Confirmed subscriber
@@ -36,7 +38,13 @@ pub async fn newsletters(
     email_client: web::Data<EmailClient>,
     user_id: ReqData<UserId>,
 ) -> actix_web::Result<HttpResponse> {
-    // Get the list of subscribers
+    let FormData {
+        title,
+        content_html,
+        content_text,
+        idempotency_key,
+    } = newsletter.0;
+    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(err400)?;
     let subscribers = get_confirmed_subscribers(&db_pool).await.map_err(err500)?;
 
     // Send a newsletter issue to each subscriber, handling errors and edge cases
@@ -44,12 +52,7 @@ pub async fn newsletters(
         match subscriber {
             Ok(subscriber) => {
                 email_client
-                    .send_email(
-                        &subscriber.email,
-                        &newsletter.title,
-                        &newsletter.content_html,
-                        &newsletter.content_text,
-                    )
+                    .send_email(&subscriber.email, &title, &content_html, &content_text)
                     .await
                     .with_context(|| {
                         format!("Failed to send newsletter issue to {}", subscriber.email)
