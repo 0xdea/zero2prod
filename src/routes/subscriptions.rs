@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::{error, fmt, iter};
 
 use actix_web::http::StatusCode;
@@ -53,6 +54,30 @@ impl ResponseError for SubscribeError {
             Self::ValidationError(_) => StatusCode::BAD_REQUEST,
             Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
+    }
+}
+
+/// Subscriber identifier
+#[derive(Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SubscriberId(Uuid);
+
+impl SubscriberId {
+    pub const fn new(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
+impl fmt::Display for SubscriberId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Deref for SubscriberId {
+    type Target = Uuid;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -120,14 +145,14 @@ pub async fn subscriptions(
 pub async fn insert_subscriber(
     new_subscriber: &NewSubscriber,
     transaction: &mut Transaction<'_, Postgres>,
-) -> sqlx::Result<Uuid> {
-    let subscriber_id = Uuid::new_v4();
+) -> sqlx::Result<SubscriberId> {
+    let subscriber_id = SubscriberId::new(Uuid::new_v4());
     let query = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at, status)
         VALUES ($1, $2, $3, $4, 'pending_confirmation')
         "#,
-        subscriber_id,
+        *subscriber_id,
         new_subscriber.email.as_ref(),
         new_subscriber.name.as_ref(),
         Utc::now()
@@ -176,7 +201,7 @@ impl error::Error for StoreTokenError {
     skip(subscription_token, transaction)
 )]
 pub async fn store_token(
-    subscriber_id: Uuid,
+    subscriber_id: SubscriberId,
     subscription_token: &str,
     transaction: &mut Transaction<'_, Postgres>,
 ) -> Result<(), StoreTokenError> {
@@ -186,7 +211,7 @@ pub async fn store_token(
         VALUES ($1, $2)
         "#,
         subscription_token,
-        subscriber_id
+        *subscriber_id
     );
     transaction.execute(query).await.map_err(StoreTokenError)?;
 
