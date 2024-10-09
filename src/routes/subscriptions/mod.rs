@@ -15,6 +15,9 @@ use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
 use crate::utils::error_chain_fmt;
 
+mod confirm;
+pub use confirm::*;
+
 /// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
