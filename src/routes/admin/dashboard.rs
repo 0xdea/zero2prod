@@ -14,7 +14,7 @@ pub async fn dashboard(
 ) -> actix_web::Result<HttpResponse> {
     // Validate session and retrieve associated `user_id` and `username`
     let user_id = user_id.into_inner();
-    let username = get_username(*user_id, &db_pool)
+    let username = get_username(user_id, &db_pool)
         .await
         .map_err(e500_internal_server_error)?;
 

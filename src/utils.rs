@@ -4,7 +4,8 @@ use actix_web::http::header::LOCATION;
 use actix_web::HttpResponse;
 use anyhow::Context;
 use sqlx::PgPool;
-use uuid::Uuid;
+
+use crate::authentication::UserId;
 
 /// Provide a representation for any type that implements `Error`
 pub fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -44,14 +45,14 @@ pub fn e303_see_other(location: &str) -> HttpResponse {
 
 /// Retrieve the username that matches a `user_id` from the database
 #[tracing::instrument(name = "Get Username", skip(db_pool))]
-pub async fn get_username(user_id: Uuid, db_pool: &PgPool) -> anyhow::Result<String> {
+pub async fn get_username(user_id: UserId, db_pool: &PgPool) -> anyhow::Result<String> {
     let row = sqlx::query!(
         r#"
         SELECT username
         FROM users
         WHERE user_id = $1
         "#,
-        user_id
+        *user_id
     )
     .fetch_one(db_pool)
     .await

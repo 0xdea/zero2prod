@@ -12,8 +12,14 @@ use crate::session_state::TypedSession;
 use crate::utils::{e303_see_other, e500_internal_server_error};
 
 /// User identifier
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct UserId(Uuid);
+
+impl UserId {
+    pub const fn new(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
 
 impl fmt::Display for UserId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -43,7 +49,7 @@ pub async fn reject_logged_out_users(
 
     // Check if the session state contains a `user_id`, otherwise return error
     if let Some(user_id) = session.get_user_id().map_err(e500_internal_server_error)? {
-        req.extensions_mut().insert(UserId(user_id));
+        req.extensions_mut().insert(user_id);
         next.call(req).await
     } else {
         let response = e303_see_other("/login");

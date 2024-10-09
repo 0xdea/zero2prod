@@ -3,8 +3,8 @@ use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use secrecy::{ExposeSecret, SecretBox};
 use sqlx::PgPool;
-use uuid::Uuid;
 
+use crate::authentication::UserId;
 use crate::telemetry::spawn_blocking_with_tracing;
 
 /// Fallback hash in case an invalid username is provided during authentication
@@ -28,7 +28,7 @@ pub enum AuthError {
 
 /// Validate provided authentication credentials and return `user_id` if they are valid
 #[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
-pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid, AuthError> {
+pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<UserId, AuthError> {
     // Fallback `user_id` and password hash to prevent timing attacks
     let mut user_id = None;
     let mut expected_password_hash = SecretBox::new(Box::new(FALLBACK_HASH.to_string()));
@@ -57,7 +57,7 @@ pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<Uuid
 async fn get_stored_creds(
     username: &str,
     db_pool: &PgPool,
-) -> anyhow::Result<Option<(Uuid, SecretBox<String>)>> {
+) -> anyhow::Result<Option<(UserId, SecretBox<String>)>> {
     let row = sqlx::query!(
         r#"
         SELECT user_id, password_hash
@@ -69,7 +69,12 @@ async fn get_stored_creds(
     .fetch_optional(db_pool)
     .await
     .context("Failed to perform a query to validate auth credentials")?
-    .map(|r| (r.user_id, SecretBox::new(Box::new(r.password_hash))));
+    .map(|r| {
+        (
+            UserId::new(r.user_id),
+            SecretBox::new(Box::new(r.password_hash)),
+        )
+    });
 
     Ok(row)
 }
@@ -94,7 +99,7 @@ async fn verify_password_hash(
 /// Change password stored in the database for a specific `user_id`
 #[tracing::instrument(name = "Change password", skip(password, db_pool))]
 pub async fn change_password(
-    user_id: Uuid,
+    user_id: UserId,
     password: SecretBox<String>,
     db_pool: &PgPool,
 ) -> anyhow::Result<()> {
@@ -109,7 +114,7 @@ pub async fn change_password(
         WHERE user_id = $2
         "#,
         password_hash.expose_secret(),
-        user_id
+        *user_id
     )
     .execute(db_pool)
     .await

@@ -112,6 +112,7 @@ pub async fn subscriptions(
 
 /// Insert a subscriber into the database and return its `subscriber_id`
 /// TODO: What happens if a user tries to subscribe twice? Make sure that they receive two confirmation emails
+/// TODO: Create a SunscriberId newtype
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
     skip(new_subscriber, transaction)

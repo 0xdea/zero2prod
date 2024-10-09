@@ -61,6 +61,7 @@ pub async fn confirm(
 
 /// Get `subscriber_id` from subscription token
 /// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
+/// TODO: Create a SubscriberId newtype
 #[tracing::instrument(
     name = "Getting subscriber id from subscription token",
     skip(subscription_token, db_pool)

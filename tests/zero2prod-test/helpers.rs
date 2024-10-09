@@ -13,6 +13,7 @@ use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use zero2prod::authentication::UserId;
 use zero2prod::configuration::Settings;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -300,7 +301,7 @@ impl TestApp {
 
 /// Test user data
 pub struct TestUser {
-    pub user_id: Uuid,
+    pub user_id: UserId,
     pub username: String,
     pub password: String,
 }
@@ -309,7 +310,7 @@ impl TestUser {
     /// Generate new test `user_id` and authentication credentials
     pub fn generate() -> Self {
         Self {
-            user_id: Uuid::new_v4(),
+            user_id: UserId::new(Uuid::new_v4()),
             username: Self::fake_username(),
             password: Self::fake_password(FAKE_PASSWORD_LEN),
         }
@@ -332,7 +333,7 @@ impl TestUser {
             INSERT INTO users (user_id, username, password_hash)
             VALUES ($1, $2, $3)
             "#,
-            self.user_id,
+            *self.user_id,
             self.username,
             password_hash
         )

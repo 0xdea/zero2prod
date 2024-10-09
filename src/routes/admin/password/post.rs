@@ -22,7 +22,7 @@ pub async fn password(
 ) -> actix_web::Result<HttpResponse> {
     // Validate session and retrieve associated `user_id` and `username`
     let user_id = user_id.into_inner();
-    let username = get_username(*user_id, &db_pool)
+    let username = get_username(user_id, &db_pool)
         .await
         .map_err(e500_internal_server_error)?;
 
@@ -61,7 +61,7 @@ pub async fn password(
     }
 
     // Change the password and display flash message
-    change_password(*user_id, form.0.new_password, &db_pool)
+    change_password(user_id, form.0.new_password, &db_pool)
         .await
         .map_err(e500_internal_server_error)?;
     FlashMessage::info("Your password has been changed").send();
