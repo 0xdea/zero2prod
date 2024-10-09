@@ -4,8 +4,8 @@ use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use sqlx::PgPool;
-use uuid::Uuid;
 
+use crate::routes::SubscriberId;
 use crate::utils::error_chain_fmt;
 
 /// Web query parameters
@@ -61,7 +61,6 @@ pub async fn confirm(
 
 /// Get `subscriber_id` from subscription token
 /// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
-/// TODO: Create a SubscriberId newtype
 #[tracing::instrument(
     name = "Getting subscriber id from subscription token",
     skip(subscription_token, db_pool)
@@ -69,7 +68,7 @@ pub async fn confirm(
 pub async fn get_subscriber_id_from_token(
     subscription_token: &str,
     db_pool: &PgPool,
-) -> sqlx::Result<Option<Uuid>> {
+) -> sqlx::Result<Option<SubscriberId>> {
     let result = sqlx::query!(
         r#"
         SELECT subscriber_id
@@ -81,19 +80,19 @@ pub async fn get_subscriber_id_from_token(
     .fetch_optional(db_pool)
     .await?;
 
-    Ok(result.map(|r| r.subscriber_id))
+    Ok(result.map(|r| SubscriberId::new(r.subscriber_id)))
 }
 
 /// Mark subscriber as confirmed
 #[tracing::instrument(name = "Marking subscriber as confirmed", skip(subscriber_id, db_pool))]
-pub async fn confirm_subscriber(subscriber_id: Uuid, db_pool: &PgPool) -> sqlx::Result<()> {
+pub async fn confirm_subscriber(subscriber_id: SubscriberId, db_pool: &PgPool) -> sqlx::Result<()> {
     sqlx::query!(
         r#"
         UPDATE subscriptions
         SET status = 'confirmed'
         WHERE id = $1
         "#,
-        subscriber_id
+        *subscriber_id
     )
     .execute(db_pool)
     .await?;
