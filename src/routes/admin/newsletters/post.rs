@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::idempotency::IdempotencyKey;
+use crate::idempotency::{get_saved_response, IdempotencyKey};
 use crate::utils::{e303_see_other, e400_bad_request, e500_internal_server_error};
 
 /// Web form
@@ -38,6 +38,8 @@ pub async fn newsletters(
     email_client: web::Data<EmailClient>,
     user_id: ReqData<UserId>,
 ) -> actix_web::Result<HttpResponse> {
+    // Return early if we have a saved response in the database
+    let user_id = user_id.into_inner();
     let FormData {
         title,
         content_html,
@@ -45,6 +47,14 @@ pub async fn newsletters(
         idempotency_key,
     } = newsletter.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400_bad_request)?;
+    if let Some(saved_response) = get_saved_response(&db_pool, &idempotency_key, user_id)
+        .await
+        .map_err(e500_internal_server_error)?
+    {
+        return Ok(saved_response);
+    }
+
+    // Get the list of confirmed subscribers
     let subscribers = get_confirmed_subscribers(&db_pool)
         .await
         .map_err(e500_internal_server_error)?;
