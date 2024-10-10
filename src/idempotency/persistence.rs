@@ -101,3 +101,18 @@ pub async fn save_response(
     // Re-assemble and return the response
     Ok(head.set_body(body).map_into_boxed_body())
 }
+
+/// Next action
+pub enum NextAction {
+    StartProcessing,
+    ReturnSavedResponse(HttpResponse),
+}
+
+/// Try processing the request
+pub async fn try_processing(
+    db_pool: &PgPool,
+    idempotency_key: &IdempotencyKey,
+    user_id: UserId,
+) -> anyhow::Result<NextAction> {
+    todo!()
+}

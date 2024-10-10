@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::idempotency::{get_saved_response, save_response, IdempotencyKey};
+use crate::idempotency::{save_response, try_processing, IdempotencyKey, NextAction};
 use crate::utils::{e303_see_other, e400_bad_request, e500_internal_server_error};
 
 /// Web form
@@ -47,13 +47,15 @@ pub async fn newsletters(
         idempotency_key,
     } = newsletter.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400_bad_request)?;
-    if let Some(saved_response) = get_saved_response(&db_pool, &idempotency_key, user_id)
+    match try_processing(&db_pool, &idempotency_key, user_id)
         .await
         .map_err(e500_internal_server_error)?
     {
-        // TODO: this shouldn't be here?
-        FlashMessage::info("The newsletter issue has been published!").send();
-        return Ok(saved_response);
+        NextAction::StartProcessing => {}
+        NextAction::ReturnSavedResponse(response) => {
+            success_message().send();
+            return Ok(response);
+        }
     }
 
     // Get the list of confirmed subscribers
@@ -83,7 +85,7 @@ pub async fn newsletters(
     }
 
     // Save response for idempotency, redirect back to the endpoint, and display flash message
-    FlashMessage::info("The newsletter issue has been published!").send();
+    success_message().send();
     let response = e303_see_other("/admin/newsletters");
     let response = save_response(&db_pool, &idempotency_key, user_id, response)
         .await
@@ -112,4 +114,9 @@ async fn get_confirmed_subscribers(
     .collect();
 
     Ok(confirmed_subscribers)
+}
+
+/// Return a flash message in case of successful newsletter publication
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been published!")
 }
