@@ -38,7 +38,7 @@ pub async fn newsletters(
     email_client: web::Data<EmailClient>,
     user_id: ReqData<UserId>,
 ) -> actix_web::Result<HttpResponse> {
-    // Return early if we have a saved response in the database
+    // Return early if we have a saved response in the database, otherwise start processing the request
     let user_id = user_id.into_inner();
     let FormData {
         title,
@@ -47,16 +47,16 @@ pub async fn newsletters(
         idempotency_key,
     } = newsletter.0;
     let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400_bad_request)?;
-    match try_processing(&db_pool, &idempotency_key, user_id)
+    let transaction = match try_processing(&db_pool, &idempotency_key, user_id)
         .await
         .map_err(e500_internal_server_error)?
     {
-        NextAction::StartProcessing => {}
+        NextAction::StartProcessing(t) => t,
         NextAction::ReturnSavedResponse(response) => {
             success_message().send();
             return Ok(response);
         }
-    }
+    };
 
     // Get the list of confirmed subscribers
     let subscribers = get_confirmed_subscribers(&db_pool)
@@ -87,7 +87,7 @@ pub async fn newsletters(
     // Save response for idempotency, redirect back to the endpoint, and display flash message
     success_message().send();
     let response = e303_see_other("/admin/newsletters");
-    let response = save_response(&db_pool, &idempotency_key, user_id, response)
+    let response = save_response(transaction, &idempotency_key, user_id, response)
         .await
         .map_err(e500_internal_server_error)?;
     Ok(response)

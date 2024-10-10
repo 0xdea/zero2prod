@@ -1,7 +1,7 @@
 use actix_web::body::to_bytes;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use sqlx::PgPool;
+use sqlx::{Executor, PgPool, Postgres, Transaction};
 
 use crate::authentication::UserId;
 use crate::idempotency::IdempotencyKey;
@@ -51,10 +51,53 @@ pub async fn get_saved_response(
     }
 }
 
+/// Next action
+pub enum NextAction {
+    StartProcessing(Transaction<'static, Postgres>),
+    ReturnSavedResponse(HttpResponse),
+}
+
+/// Try processing the request
+pub async fn try_processing(
+    db_pool: &PgPool,
+    idempotency_key: &IdempotencyKey,
+    user_id: UserId,
+) -> anyhow::Result<NextAction> {
+    // Save the initial request fields to the database
+    let mut transaction = db_pool.begin().await?;
+    let n_inserted_rows = transaction
+        .execute(sqlx::query!(
+            r#"
+        INSERT INTO idempotency (
+            user_id,
+            idempotency_key,
+            created_at
+        )
+        VALUES ($1, $2, now())
+        ON CONFLICT DO NOTHING
+        "#,
+            *user_id,
+            idempotency_key.as_ref()
+        ))
+        .await?
+        .rows_affected();
+
+    // If the insert was successful, start processing the request
+    if n_inserted_rows > 0 {
+        Ok(NextAction::StartProcessing(transaction))
+    } else {
+        // Otherwise, return the saved response
+        let response = get_saved_response(db_pool, idempotency_key, user_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Saved response not found"))?;
+        Ok(NextAction::ReturnSavedResponse(response))
+    }
+}
+
 /// Save response to the database
 #[allow(clippy::future_not_send)]
 pub async fn save_response(
-    db_pool: &PgPool,
+    mut transaction: Transaction<'static, Postgres>,
     idempotency_key: &IdempotencyKey,
     user_id: UserId,
     http_response: HttpResponse,
@@ -77,8 +120,9 @@ pub async fn save_response(
 
     // Save the rest of the response to the database (query is not checked because we're using a custom type)
     #[allow(clippy::cast_possible_wrap)]
-    sqlx::query_unchecked!(
-        r#"
+    transaction
+        .execute(sqlx::query_unchecked!(
+            r#"
         UPDATE idempotency
         SET
             response_status_code = $3,
@@ -88,56 +132,15 @@ pub async fn save_response(
             user_id = $1 AND
             idempotency_key = $2
         "#,
-        *user_id,
-        idempotency_key.as_ref(),
-        status_code.as_u16() as i16,
-        headers,
-        body.as_ref(),
-    )
-    .execute(db_pool)
-    .await?;
+            *user_id,
+            idempotency_key.as_ref(),
+            status_code.as_u16() as i16,
+            headers,
+            body.as_ref(),
+        ))
+        .await?;
+    transaction.commit().await?;
 
     // Re-assemble and return the response
     Ok(head.set_body(body).map_into_boxed_body())
-}
-
-/// Next action
-pub enum NextAction {
-    StartProcessing,
-    ReturnSavedResponse(HttpResponse),
-}
-
-/// Try processing the request
-pub async fn try_processing(
-    db_pool: &PgPool,
-    idempotency_key: &IdempotencyKey,
-    user_id: UserId,
-) -> anyhow::Result<NextAction> {
-    // Save the initial request fields to the database
-    let n_inserted_rows = sqlx::query!(
-        r#"
-        INSERT INTO idempotency (
-            user_id,
-            idempotency_key,
-            created_at
-        )
-        VALUES ($1, $2, now())
-        ON CONFLICT DO NOTHING
-        "#,
-        *user_id,
-        idempotency_key.as_ref()
-    )
-    .execute(db_pool)
-    .await?
-    .rows_affected();
-
-    // Check the number of inserted rows and act accordingly
-    if n_inserted_rows > 0 {
-        Ok(NextAction::StartProcessing)
-    } else {
-        let response = get_saved_response(db_pool, idempotency_key, user_id)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Saved response not found"))?;
-        Ok(NextAction::ReturnSavedResponse(response))
-    }
 }
