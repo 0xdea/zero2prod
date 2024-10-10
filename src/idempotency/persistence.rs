@@ -24,9 +24,9 @@ pub async fn get_saved_response(
     let saved_response = sqlx::query!(
         r#"
         SELECT
-            response_status_code,
-            response_headers as "response_headers: Vec<HeaderPairRecord>",
-            response_body
+            response_status_code AS "response_status_code!",
+            response_headers AS "response_headers!: Vec<HeaderPairRecord>",
+            response_body AS "response_body!"
         FROM idempotency
         WHERE
             user_id = $1 AND
