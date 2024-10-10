@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -202,6 +204,47 @@ async fn newsletter_creation_is_idempotent(_pool_opts: PgPoolOptions, conn_opts:
     // Follow the redirect
     let html = app.get_newsletters_html().await;
     assert!(html.contains("<p><i>The newsletter issue has been published!</i></p>"));
+
+    db_pool.close().await;
+}
+
+#[sqlx::test]
+async fn concurrent_form_submission_is_handled_gracefully(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
+    let app = TestApp::spawn(&db_pool).await;
+
+    // Create a confirmed subscriber for which we expect only one newsletter
+    app.create_confirmed_subscriber().await;
+    // Set a long delay to ensure that the second request arrives before the first one completes
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    // Login
+    app.test_user.login(&app).await;
+
+    // Submit two newsletter forms concurrently
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content_text": "Newsletter body as plain text",
+        "content_html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": IdempotencyKey::generate()
+    });
+    let response1 = app.post_newsletters(&body);
+    let response2 = app.post_newsletters(&body);
+    let (response1, response2) = tokio::join!(response1, response2);
+
+    assert_eq!(response1.status(), response2.status());
+    assert_eq!(
+        response1.text().await.unwrap(),
+        response2.text().await.unwrap()
+    );
 
     db_pool.close().await;
 }
