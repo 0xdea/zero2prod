@@ -74,7 +74,27 @@ pub async fn save_response(
         h
     };
 
-    // TODO: SQL query
+    // Save response to the database (query is not checked because we're using a custom type)
+    sqlx::query_unchecked!(
+        r#"
+        INSERT INTO idempotency (
+            user_id,
+            idempotency_key,
+            response_status_code,
+            response_headers,
+            response_body,
+            created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, now())
+        "#,
+        *user_id,
+        idempotency_key.as_ref(),
+        status_code,
+        headers,
+        body.as_ref(),
+    )
+    .execute(db_pool)
+    .await?;
 
     // Re-assemble and return the response
     Ok(head.set_body(body).map_into_boxed_body())
