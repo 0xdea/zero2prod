@@ -52,6 +52,7 @@ pub async fn get_saved_response(
 }
 
 /// Save response to the database
+#[allow(clippy::future_not_send)]
 pub async fn save_response(
     db_pool: &PgPool,
     idempotency_key: &IdempotencyKey,
@@ -63,7 +64,7 @@ pub async fn save_response(
     let body = to_bytes(body).await.map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Process the body
-    let status_code = head.status().as_u16() as i16;
+    let status_code = head.status();
     let headers = {
         let mut h = Vec::with_capacity(head.headers().len());
         for (name, value) in head.headers() {
@@ -75,6 +76,7 @@ pub async fn save_response(
     };
 
     // Save response to the database (query is not checked because we're using a custom type)
+    #[allow(clippy::cast_possible_wrap)]
     sqlx::query_unchecked!(
         r#"
         INSERT INTO idempotency (
@@ -89,7 +91,7 @@ pub async fn save_response(
         "#,
         *user_id,
         idempotency_key.as_ref(),
-        status_code,
+        status_code.as_u16() as i16,
         headers,
         body.as_ref(),
     )

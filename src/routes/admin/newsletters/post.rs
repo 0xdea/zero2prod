@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use crate::authentication::UserId;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
-use crate::idempotency::{get_saved_response, IdempotencyKey};
+use crate::idempotency::{get_saved_response, save_response, IdempotencyKey};
 use crate::utils::{e303_see_other, e400_bad_request, e500_internal_server_error};
 
 /// Web form
@@ -51,6 +51,8 @@ pub async fn newsletters(
         .await
         .map_err(e500_internal_server_error)?
     {
+        // TODO: this shouldn't be here?
+        FlashMessage::info("The newsletter issue has been published!").send();
         return Ok(saved_response);
     }
 
@@ -80,9 +82,13 @@ pub async fn newsletters(
         }
     }
 
-    // Return to the endpoint and display flash message
+    // Save response for idempotency, redirect back to the endpoint, and display flash message
     FlashMessage::info("The newsletter issue has been published!").send();
-    Ok(e303_see_other("/admin/newsletters"))
+    let response = e303_see_other("/admin/newsletters");
+    let response = save_response(&db_pool, &idempotency_key, user_id, response)
+        .await
+        .map_err(e500_internal_server_error)?;
+    Ok(response)
 }
 
 /// Get the list of confirmed subscribers with valid email addresses
