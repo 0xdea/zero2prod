@@ -157,7 +157,7 @@ impl TestApp {
         // Generate fake name and email
         let name: String = Name().fake();
         let email: String = SafeEmail().fake();
-        let body = serde_urlencoded::to_string(&serde_json::json!({
+        let body = serde_urlencoded::to_string(serde_json::json!({
             "name": name,
             "email": email
         }))
@@ -172,7 +172,7 @@ impl TestApp {
             .await;
 
         // Subscribe to the newsletter using the API
-        self.post_subscriptions(body.into())
+        self.post_subscriptions(body)
             .await
             .error_for_status()
             .unwrap();
