@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use wiremock::matchers::any;
-use wiremock::{Mock, ResponseTemplate};
+use wiremock::ResponseTemplate;
 
 use zero2prod::idempotency::IdempotencyKey;
 
@@ -18,7 +17,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
 
     // Create an unconfirmed subscriber for which we expect no newsletters
     app.create_unconfirmed_subscriber().await;
-    Mock::given(any())
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(0)
         .mount(&app.email_server)
