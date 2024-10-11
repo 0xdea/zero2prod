@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use wiremock::matchers::{any, method, path};
+use wiremock::matchers::any;
 use wiremock::{Mock, ResponseTemplate};
 
 use zero2prod::idempotency::IdempotencyKey;
 
-use crate::helpers::{assert_is_redirect_to, TestApp};
+use crate::helpers::{assert_is_redirect_to, when_sending_an_email, TestApp};
 
 #[sqlx::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers(
@@ -54,8 +54,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers(
 
     // Create a confirmed subscriber for which we expect one newsletter
     app.create_confirmed_subscriber().await;
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&app.email_server)
@@ -173,8 +172,7 @@ async fn newsletter_creation_is_idempotent(_pool_opts: PgPoolOptions, conn_opts:
 
     // Create a confirmed subscriber for which we expect only one newsletter
     app.create_confirmed_subscriber().await;
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&app.email_server)
@@ -219,8 +217,7 @@ async fn concurrent_form_submission_is_handled_gracefully(
     // Create a confirmed subscriber for which we expect only one newsletter
     app.create_confirmed_subscriber().await;
     // Set a long delay to ensure that the second request arrives before the first one completes
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
         .expect(1)
         .mount(&app.email_server)
@@ -245,6 +242,57 @@ async fn concurrent_form_submission_is_handled_gracefully(
         response1.text().await.unwrap(),
         response2.text().await.unwrap()
     );
+
+    db_pool.close().await;
+}
+
+#[sqlx::test]
+async fn transient_errors_do_not_cause_duplicate_deliveries_on_retries(
+    _pool_opts: PgPoolOptions,
+    conn_opts: PgConnectOptions,
+) {
+    let db_pool = TestApp::init_test_db_pool(conn_opts);
+    let app = TestApp::spawn(&db_pool).await;
+
+    let body = serde_json::json!({
+        "title": "Newsletter title",
+        "content_text": "Newsletter body as plain text",
+        "content_html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": IdempotencyKey::generate()
+    });
+
+    // Create two confirmed subscribers
+    app.create_confirmed_subscriber().await;
+    app.create_confirmed_subscriber().await;
+
+    // Login
+    app.test_user.login(&app).await;
+
+    // Submit newsletter form - email delivery fails for the second subscriber
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(200))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(500))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+    let response = app.post_newsletters(&body).await;
+    assert_eq!(response.status(), 500);
+
+    // Retry submitting the newsletter form - email delivery will succeed for both subscribers now
+    when_sending_an_email()
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .named("Delivery retry")
+        .mount(&app.email_server)
+        .await;
+    let response = app.post_newsletters(&body).await;
+    assert_eq!(response.status(), 303);
 
     db_pool.close().await;
 }

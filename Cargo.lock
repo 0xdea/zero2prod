@@ -3722,6 +3722,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
  "thiserror",
  "tokio",

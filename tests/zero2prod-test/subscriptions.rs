@@ -1,8 +1,7 @@
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use wiremock::matchers::{method, path};
-use wiremock::{Mock, ResponseTemplate};
+use wiremock::ResponseTemplate;
 
-use crate::helpers::TestApp;
+use crate::helpers::{when_sending_an_email, TestApp};
 
 #[sqlx::test]
 async fn subscribe_returns_a_200_for_valid_form_data(
@@ -12,8 +11,7 @@ async fn subscribe_returns_a_200_for_valid_form_data(
     let db_pool = TestApp::init_test_db_pool(conn_opts);
     let app = TestApp::spawn(&db_pool).await;
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .mount(&app.email_server)
         .await;
@@ -34,8 +32,7 @@ async fn subscribe_persists_the_new_subscriber(
     let app = TestApp::spawn(&db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .mount(&app.email_server)
         .await;
@@ -122,8 +119,7 @@ async fn subscribe_sends_a_confirmation_email_for_valid_data(
     let app = TestApp::spawn(&db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .expect(1)
         .mount(&app.email_server)
@@ -143,8 +139,7 @@ async fn subscribe_sends_a_confirmation_email_with_a_link(
     let app = TestApp::spawn(&db_pool).await;
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
+    when_sending_an_email()
         .respond_with(ResponseTemplate::new(200))
         .mount(&app.email_server)
         .await;

@@ -2,7 +2,9 @@ use std::{env, io, sync};
 
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
+use fake::faker::internet::en::SafeEmail;
 use fake::faker::internet::en::{Password, Username};
+use fake::faker::name::en::Name;
 use fake::Fake;
 use fdlimit::raise_fd_limit;
 use linkify::{LinkFinder, LinkKind};
@@ -11,7 +13,7 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
-use wiremock::{Mock, MockServer, ResponseTemplate};
+use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use zero2prod::authentication::UserId;
 use zero2prod::configuration::Settings;
@@ -152,11 +154,17 @@ impl TestApp {
 
     /// Create an unconfirmed subscriber using the public API
     pub async fn create_unconfirmed_subscriber(&self) -> ConfirmationLinks {
-        let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+        // Generate fake name and email
+        let name: String = Name().fake();
+        let email: String = SafeEmail().fake();
+        let body = serde_urlencoded::to_string(&serde_json::json!({
+            "name": name,
+            "email": email
+        }))
+        .unwrap();
 
         // Build a scoped mock Postmark server
-        let _mock_guard = Mock::given(path("/email"))
-            .and(method("POST"))
+        let _mock_guard = when_sending_an_email()
             .respond_with(ResponseTemplate::new(200))
             .named("Create unconfirmed subscriber")
             .expect(1)
@@ -367,4 +375,9 @@ impl TestUser {
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
     assert_eq!(response.status(), 303);
     assert_eq!(response.headers().get("Location").unwrap(), location);
+}
+
+/// Shorthand for a common mocking setup
+pub fn when_sending_an_email() -> MockBuilder {
+    Mock::given(path("/email")).and(method("POST"))
 }
