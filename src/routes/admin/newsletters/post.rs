@@ -1,8 +1,12 @@
+use std::fmt;
+use std::ops::Deref;
+
 use actix_web::web::ReqData;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
-use sqlx::PgPool;
+use sqlx::{Executor, PgPool, Postgres, Transaction};
+use uuid::Uuid;
 
 use crate::authentication::UserId;
 use crate::domain::EmailAddress;
@@ -119,4 +123,61 @@ async fn get_confirmed_subscribers(
 /// Return a flash message in case of successful newsletter publication
 fn success_message() -> FlashMessage {
     FlashMessage::info("The newsletter issue has been published!")
+}
+
+/// Newsletter issue identifier
+#[derive(Copy, Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NewsletterIssueId(Uuid);
+
+impl NewsletterIssueId {
+    pub const fn new(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
+impl fmt::Display for NewsletterIssueId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl Deref for NewsletterIssueId {
+    type Target = Uuid;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// Save newsletter issue to the database
+#[tracing::instrument(skip_all)]
+async fn insert_newsletter_issue(
+    transaction: &mut Transaction<'_, Postgres>,
+    title: &str,
+    content_html: &str,
+    content_text: &str,
+) -> sqlx::Result<NewsletterIssueId> {
+    // Save newsletter issue to the database
+    let newsletter_issue_id = NewsletterIssueId::new(Uuid::new_v4());
+    transaction
+        .execute(sqlx::query!(
+            r#"
+        INSERT INTO newsletter_issues (
+            newsletter_issue_id,
+            title,
+            content_html,
+            content_text,
+            published_at
+        )
+        VALUES ($1, $2, $3, $4, now())
+        "#,
+            *newsletter_issue_id,
+            title,
+            content_html,
+            content_text,
+        ))
+        .await?;
+
+    // Return newsletter id
+    Ok(newsletter_issue_id)
 }
