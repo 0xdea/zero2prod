@@ -181,3 +181,28 @@ async fn insert_newsletter_issue(
     // Return newsletter id
     Ok(newsletter_issue_id)
 }
+
+/// Create a task in issue delivery queue
+#[tracing::instrument(skip_all)]
+async fn enqueue_delivery_task(
+    transaction: &mut Transaction<'_, Postgres>,
+    newsletter_issue_id: NewsletterIssueId,
+) -> sqlx::Result<()> {
+    // Create a task in issue delivery queue table stored in the database
+    transaction
+        .execute(sqlx::query!(
+            r#"
+        INSERT INTO issue_delivery_queue (
+            newsletter_issue_id,
+            subscriber_email
+        )
+        SELECT $1, email
+        FROM subscriptions
+        WHERE status = 'confirmed'
+        "#,
+            *newsletter_issue_id,
+        ))
+        .await?;
+
+    Ok(())
+}
