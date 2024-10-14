@@ -27,7 +27,7 @@ pub enum AuthError {
 }
 
 /// Validate provided authentication credentials and return `user_id` if they are valid
-#[tracing::instrument(name = "Validate credentials", skip(creds, db_pool))]
+#[tracing::instrument(name = "Validate credentials", skip_all)]
 pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<UserId, AuthError> {
     // Fallback `user_id` and password hash to prevent timing attacks
     let mut user_id = None;
@@ -53,7 +53,7 @@ pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<User
 }
 
 /// Extract stored authentication credentials from the database
-#[tracing::instrument(name = "Get stored credentials", skip(username, db_pool))]
+#[tracing::instrument(name = "Get stored credentials", skip_all)]
 async fn get_stored_creds(
     username: &str,
     db_pool: &PgPool,
@@ -80,7 +80,7 @@ async fn get_stored_creds(
 }
 
 /// Compare computed and stored password hashes
-#[tracing::instrument(name = "Verify password hash", skip(password_hash, password))]
+#[tracing::instrument(name = "Verify password hash", skip_all)]
 async fn verify_password_hash(
     password_hash: SecretBox<String>,
     password: SecretBox<String>,

@@ -35,7 +35,7 @@ impl fmt::Debug for LoginError {
 /// Login POST handler
 #[allow(clippy::future_not_send)]
 #[tracing::instrument(
-    skip(form, db_pool, session),
+    skip_all,
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
 pub async fn login(

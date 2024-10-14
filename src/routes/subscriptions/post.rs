@@ -84,7 +84,7 @@ impl Deref for SubscriberId {
 /// Subscriptions handler
 #[tracing::instrument(
     name = "Adding a new subscriber",
-    skip(form, db_pool, email_client, base_url),
+    skip_all,
     fields(
         subscriber_email = %form.email,
         subscriber_name= %form.name
@@ -137,10 +137,7 @@ pub async fn subscriptions(
 
 /// Insert a subscriber into the database and return its `subscriber_id`
 /// TODO: What happens if a user tries to subscribe twice? Make sure that they receive two confirmation emails
-#[tracing::instrument(
-    name = "Saving new subscriber details in the database",
-    skip(new_subscriber, transaction)
-)]
+#[tracing::instrument(name = "Saving new subscriber details in the database", skip_all)]
 pub async fn insert_subscriber(
     new_subscriber: &NewSubscriber,
     transaction: &mut Transaction<'_, Postgres>,
@@ -218,10 +215,7 @@ pub async fn store_token(
 }
 
 /// Send confirmation email to a new subscriber
-#[tracing::instrument(
-    name = "Sending confirmation email to new subscriber",
-    skip(email_client, new_subscriber)
-)]
+#[tracing::instrument(name = "Sending confirmation email to new subscriber", skip_all)]
 pub async fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,

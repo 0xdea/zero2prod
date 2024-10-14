@@ -40,7 +40,7 @@ impl ResponseError for ConfirmError {
 
 /// Subscription confirmation handler
 /// TODO: What happens if a user clicks on a confirmation link twice?
-#[tracing::instrument(name = "Confirm a pending subscriber", skip(parameters, db_pool))]
+#[tracing::instrument(name = "Confirm a pending subscriber", skip_all)]
 pub async fn confirm(
     parameters: web::Query<Parameters>,
     db_pool: web::Data<PgPool>,
@@ -61,10 +61,7 @@ pub async fn confirm(
 
 /// Get `subscriber_id` from subscription token
 /// TODO: Add validation on the incoming token, we are currently passing the raw user input straight into a query
-#[tracing::instrument(
-    name = "Getting subscriber id from subscription token",
-    skip(subscription_token, db_pool)
-)]
+#[tracing::instrument(name = "Getting subscriber id from subscription token", skip_all)]
 pub async fn get_subscriber_id_from_token(
     subscription_token: &str,
     db_pool: &PgPool,
@@ -84,7 +81,7 @@ pub async fn get_subscriber_id_from_token(
 }
 
 /// Mark subscriber as confirmed
-#[tracing::instrument(name = "Marking subscriber as confirmed", skip(subscriber_id, db_pool))]
+#[tracing::instrument(name = "Marking subscriber as confirmed", skip_all)]
 pub async fn confirm_subscriber(subscriber_id: SubscriberId, db_pool: &PgPool) -> sqlx::Result<()> {
     sqlx::query!(
         r#"
