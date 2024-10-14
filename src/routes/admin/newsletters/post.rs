@@ -113,15 +113,15 @@ async fn insert_newsletter_issue(
     transaction
         .execute(sqlx::query!(
             r#"
-        INSERT INTO newsletter_issues (
-            newsletter_issue_id,
-            title,
-            content_html,
-            content_text,
-            published_at
-        )
-        VALUES ($1, $2, $3, $4, now())
-        "#,
+            INSERT INTO newsletter_issues (
+                newsletter_issue_id,
+                title,
+                content_html,
+                content_text,
+                published_at
+            )
+            VALUES ($1, $2, $3, $4, now())
+            "#,
             *newsletter_issue_id,
             title,
             content_html,
@@ -143,14 +143,14 @@ async fn enqueue_delivery_task(
     transaction
         .execute(sqlx::query!(
             r#"
-        INSERT INTO issue_delivery_queue (
-            newsletter_issue_id,
-            subscriber_email
-        )
-        SELECT $1, email
-        FROM subscriptions
-        WHERE status = 'confirmed'
-        "#,
+            INSERT INTO issue_delivery_queue (
+                newsletter_issue_id,
+                subscriber_email
+            )
+            SELECT $1, email
+            FROM subscriptions
+            WHERE status = 'confirmed'
+            "#,
             *newsletter_issue_id,
         ))
         .await?;

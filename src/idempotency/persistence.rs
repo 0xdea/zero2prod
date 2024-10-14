@@ -1,10 +1,11 @@
 use actix_web::body::to_bytes;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use sqlx::{Executor, PgPool, Postgres, Transaction};
+use sqlx::{Executor, PgPool};
 
 use crate::authentication::UserId;
 use crate::idempotency::IdempotencyKey;
+use crate::utils::PgTransaction;
 
 /// Header pair record
 #[derive(Debug, sqlx::Type)]
@@ -53,7 +54,7 @@ pub async fn get_saved_response(
 
 /// Next action
 pub enum NextAction {
-    StartProcessing(Transaction<'static, Postgres>),
+    StartProcessing(PgTransaction),
     ReturnSavedResponse(HttpResponse),
 }
 
@@ -68,14 +69,14 @@ pub async fn try_processing(
     let n_inserted_rows = transaction
         .execute(sqlx::query!(
             r#"
-        INSERT INTO idempotency (
-            user_id,
-            idempotency_key,
-            created_at
-        )
-        VALUES ($1, $2, now())
-        ON CONFLICT DO NOTHING
-        "#,
+            INSERT INTO idempotency (
+                user_id,
+                idempotency_key,
+                created_at
+            )
+            VALUES ($1, $2, now())
+            ON CONFLICT DO NOTHING
+            "#,
             *user_id,
             idempotency_key.as_ref()
         ))
@@ -97,7 +98,7 @@ pub async fn try_processing(
 /// Save response to the database
 #[allow(clippy::future_not_send)]
 pub async fn save_response(
-    mut transaction: Transaction<'static, Postgres>,
+    mut transaction: PgTransaction,
     idempotency_key: &IdempotencyKey,
     user_id: UserId,
     http_response: HttpResponse,

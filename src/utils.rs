@@ -3,9 +3,12 @@ use std::{error, fmt};
 use actix_web::http::header::LOCATION;
 use actix_web::HttpResponse;
 use anyhow::Context;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::authentication::UserId;
+
+/// Postgres transaction type
+pub type PgTransaction = Transaction<'static, Postgres>;
 
 /// Provide a representation for any type that implements `Error`
 pub fn error_chain_fmt(e: &impl error::Error, f: &mut fmt::Formatter<'_>) -> fmt::Result {
