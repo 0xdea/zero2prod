@@ -7,6 +7,13 @@ use crate::email_client::EmailClient;
 use crate::routes::NewsletterIssueId;
 use crate::utils::PgTransaction;
 
+/// Newsletter issue
+struct NewsletterIssue {
+    title: String,
+    content_html: String,
+    content_text: String,
+}
+
 /// Try executing a task in the newsletter issue delivery queue
 #[tracing::instrument(
     skip_all,
@@ -22,7 +29,40 @@ async fn try_execute_task(db_pool: &PgPool, email_client: &EmailClient) -> anyho
         Span::current()
             .record("newsletter_issue_id", display(issue_id))
             .record("subscriber_email", display(&email));
-        // TODO: actually send email
+
+        match EmailAddress::parse(email.clone()) {
+            // Valid email address: try to send the newsletter issue
+            // TODO: implement a retry in case of a transient email delivery error
+            Ok(email) => {
+                let issue = get_issue(db_pool, issue_id).await?;
+                if let Err(e) = email_client
+                    .send_email(
+                        &email,
+                        &issue.title,
+                        &issue.content_html,
+                        &issue.content_text,
+                    )
+                    .await
+                {
+                    tracing::error!(
+                    error.cause_chain = ?e,
+                    error.message = %e,
+                    "Failed to deliver issue to confirmed subscriber {}", email
+                    );
+                }
+            }
+
+            // Invalid email address: skip this particular subscriber
+            Err(e) => {
+                tracing::error!(
+                    error.cause_chain = ?e,
+                    error.message = %e,
+                    "Skipping a confirmed subscriber because their stored contact details are invalid"
+                );
+            }
+        }
+
+        // Remove the task from the queue
         delete_task(transaction, issue_id, &email).await?;
     }
     Ok(())
@@ -32,7 +72,7 @@ async fn try_execute_task(db_pool: &PgPool, email_client: &EmailClient) -> anyho
 #[tracing::instrument(skip_all)]
 async fn dequeue_task(
     db_pool: &PgPool,
-) -> anyhow::Result<Option<(PgTransaction, NewsletterIssueId, EmailAddress)>> {
+) -> anyhow::Result<Option<(PgTransaction, NewsletterIssueId, String)>> {
     // Query the database to fetch a task
     let mut transaction = db_pool.begin().await?;
     let r = sqlx::query!(
@@ -52,7 +92,7 @@ async fn dequeue_task(
         Ok(Some((
             transaction,
             NewsletterIssueId::new(r.newsletter_issue_id),
-            EmailAddress::parse(r.subscriber_email).unwrap(),
+            r.subscriber_email,
         )))
     } else {
         Ok(None)
@@ -64,7 +104,7 @@ async fn dequeue_task(
 async fn delete_task(
     mut transaction: PgTransaction,
     issue_id: NewsletterIssueId,
-    email_address: &EmailAddress,
+    email: &str,
 ) -> anyhow::Result<()> {
     // Delete a task from the database
     transaction
@@ -76,9 +116,31 @@ async fn delete_task(
                 subscriber_email = $2
             "#,
             *issue_id,
-            email_address.as_ref()
+            email
         ))
         .await?;
     transaction.commit().await?;
     Ok(())
+}
+
+/// Fetch the newsletter content
+#[tracing::instrument(skip_all)]
+async fn get_issue(
+    db_pool: &PgPool,
+    issue_id: NewsletterIssueId,
+) -> anyhow::Result<NewsletterIssue> {
+    // Get the newsletter content associated with the provided `newsletter_issue_id`
+    let issue = sqlx::query_as!(
+        NewsletterIssue,
+        r#"
+        SELECT title, content_html, content_text
+        FROM newsletter_issues
+        WHERE newsletter_issue_id = $1
+        "#,
+        *issue_id
+    )
+    .fetch_one(db_pool)
+    .await?;
+
+    Ok(issue)
 }
