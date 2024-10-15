@@ -16,14 +16,14 @@ async fn main() -> anyhow::Result<()> {
     let config_app = Settings::get_config().expect("Failed to load configuration");
     let config_wrk = Settings::get_config().expect("Failed to load configuration");
 
-    // Prepare the application and the delivery worker
-    let application = Application::build(config_app).await?.run_until_stopped();
-    let worker = DeliveryWorker::build(config_wrk)?.run_until_stopped();
+    // Prepare the application and the delivery worker tasks
+    let task_app = tokio::spawn(Application::build(config_app).await?.run_until_stopped());
+    let task_wrk = tokio::spawn(DeliveryWorker::build(config_wrk)?.run_until_stopped());
 
-    // Run both tasks concurrently, return as soon as one of the tasks completes or errors out
+    // Run both tasks concurrently, returning as soon as one of the tasks completes or errors out
     tokio::select! {
-        _ = application => {},
-        _ = worker => {},
+        _ = task_app => {},
+        _ = task_wrk => {},
     }
 
     Ok(())
