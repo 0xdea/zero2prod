@@ -24,10 +24,6 @@ use crate::routes::{
 /// Application base URL
 pub struct ApplicationBaseUrl(pub String);
 
-/// HMAC secret
-/// TODO: change name?
-pub struct HmacSecret(pub SecretString);
-
 /// Application
 pub struct Application {
     server: Server,
@@ -62,7 +58,7 @@ impl Application {
             db_pool.clone(),
             email_client,
             config.application.base_url,
-            config.application.hmac_secret,
+            config.application.signing_key,
             config.redis_uri,
         )
         .await?;
@@ -81,20 +77,19 @@ impl Application {
 }
 
 /// Run the HTTP server
-/// TODO: Refactor `HmacSecret` into a more generic secret key new-type
 pub async fn run_server(
     listener: net::TcpListener,
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
-    hmac_secret: SecretString,
+    signing_key: SecretString,
     redis_uri: SecretString,
 ) -> anyhow::Result<Server> {
     // Extract secret key from HMAC secret
-    let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());
+    let signing_key = Key::from(signing_key.expose_secret().as_bytes());
 
     // Build message framework
-    let message_store = CookieMessageStore::builder(secret_key.clone()).build();
+    let message_store = CookieMessageStore::builder(signing_key.clone()).build();
     let message_framework = FlashMessagesFramework::builder(message_store).build();
 
     // Set up Redis session store
@@ -111,7 +106,7 @@ pub async fn run_server(
             .wrap(message_framework.clone())
             .wrap(SessionMiddleware::new(
                 redis_store.clone(),
-                secret_key.clone(),
+                signing_key.clone(),
             ))
             .wrap(TracingLogger::default())
             .route("/", web::get().to(home))

@@ -25,7 +25,7 @@ pub struct EmailClient {
     authorization_token: SecretString,
 }
 
-// TODO: Use a proper templating solution for our emails (e.g., tera)
+// TODO: Use a proper templating solution for emails (e.g., tera)
 impl EmailClient {
     pub fn new(
         base_url: Url,

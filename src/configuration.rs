@@ -52,7 +52,7 @@ pub struct ApplicationSettings {
     pub app_host: String,
     pub app_port: u16,
     pub base_url: String,
-    pub hmac_secret: SecretString,
+    pub signing_key: SecretString,
 }
 
 /// Database settings

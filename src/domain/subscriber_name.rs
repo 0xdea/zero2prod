@@ -1,5 +1,5 @@
 /// Forbidden chars for subscriber name
-/// TODO: it would be better to use a whitelist approach instead
+/// TODO: It would be better to use a whitelist approach instead
 const NAME_BLACKLIST: [char; 9] = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
 
 /// Subscriber name

@@ -53,8 +53,8 @@ pub enum ExecutionResult {
 }
 
 /// Issue delivery worker loop
-// TODO: refine the implementation to distinguish between transient and fatal failures (e.g., invalid subscriber email)
-// TODO: improve the delay strategy by introducing exponential backoff with jitter
+/// TODO: Refine the implementation to distinguish between transient and fatal failures (e.g., invalid subscriber email)
+/// TODO: Improve the delay strategy by introducing exponential backoff with jitter
 async fn worker_loop(db_pool: PgPool, email_client: EmailClient) -> anyhow::Result<()> {
     loop {
         match try_execute_task(&db_pool, &email_client).await {
@@ -96,7 +96,7 @@ pub async fn try_execute_task(
 
     match EmailAddress::parse(email.clone()) {
         // Valid email address: try to send the newsletter issue
-        // TODO: implement a retry in case of a transient email delivery error
+        // TODO: Implement a retry in case of a transient email delivery error
         Ok(email) => {
             let issue = get_issue(db_pool, issue_id).await?;
             if let Err(e) = email_client

@@ -1,6 +1,6 @@
 application:
   app_port: 8000
-  hmac_secret: "super-long-and-secret-random-key-needed-to-verify-message-integrity"
+  signing_key: "super-long-and-secret-random-key-needed-to-verify-message-integrity"
 database:
   username: postgres
   password: password

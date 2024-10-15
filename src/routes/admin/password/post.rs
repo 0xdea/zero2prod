@@ -49,7 +49,7 @@ pub async fn password(
         username,
         password: form.0.old_password,
     };
-    // TODO: use something similar to redirect_to_login_with_error() instead
+    // TODO: Use something similar to `redirect_to_login_with_error()` instead
     if let Err(e) = validate_creds(creds, &db_pool).await {
         return match e {
             AuthError::InvalidCredentials(_) => {
