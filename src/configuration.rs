@@ -9,6 +9,7 @@ use tracing::log::LevelFilter;
 use url::ParseError;
 
 use crate::domain::EmailAddress;
+use crate::email_client::EmailClient;
 
 /// Settings
 #[derive(serde::Deserialize)]
@@ -94,6 +95,18 @@ pub struct EmailClientSettings {
 }
 
 impl EmailClientSettings {
+    /// Build the email client
+    pub fn client(self) -> EmailClient {
+        let base_url = self.base_url().expect("Invalid base URL");
+        let sender_email = self.sender_email().expect("Invalid sender email address");
+        EmailClient::new(
+            self.timeout(),
+            base_url,
+            sender_email,
+            self.authorization_token,
+        )
+    }
+
     /// Parse base URL
     pub fn base_url(&self) -> Result<Url, ParseError> {
         Url::parse(&self.base_url)

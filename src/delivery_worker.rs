@@ -31,18 +31,8 @@ impl DeliveryWorker {
 
     /// Build a worker based on settings and database pool
     pub fn build_with_db_pool(config: Settings, db_pool: &PgPool) -> anyhow::Result<Self> {
-        // Build an email client
-        let base_url = config.email_client.base_url().expect("Invalid base URL");
-        let sender_email = config
-            .email_client
-            .sender_email()
-            .expect("Invalid sender email address");
-        let email_client = EmailClient::new(
-            config.email_client.timeout(),
-            base_url,
-            sender_email,
-            config.email_client.authorization_token,
-        );
+        // Build the email client
+        let email_client = config.email_client.client();
 
         Ok(Self {
             db_pool: db_pool.clone(),

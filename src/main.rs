@@ -28,7 +28,6 @@ async fn main() -> anyhow::Result<()> {
         o = task_app => report_exit("Application", o),
         o = task_wrk => report_exit("Delivery Worker", o),
     }
-
     Ok(())
 }
 

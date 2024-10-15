@@ -48,18 +48,8 @@ impl Application {
 
     /// Build an application based on settings and database pool
     pub async fn build_with_db_pool(config: Settings, db_pool: &PgPool) -> anyhow::Result<Self> {
-        // Build an email client
-        let base_url = config.email_client.base_url().expect("Invalid base URL");
-        let sender_email = config
-            .email_client
-            .sender_email()
-            .expect("Invalid sender email address");
-        let email_client = EmailClient::new(
-            config.email_client.timeout(),
-            base_url,
-            sender_email,
-            config.email_client.authorization_token,
-        );
+        // Build the email client
+        let email_client = config.email_client.client();
 
         // Run the HTTP server and return its data
         let listener = net::TcpListener::bind(format!(
