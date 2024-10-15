@@ -17,6 +17,7 @@ use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use zero2prod::authentication::UserId;
 use zero2prod::configuration::Settings;
+use zero2prod::delivery_worker::{try_execute_task, ExecutionResult};
 use zero2prod::email_client::EmailClient;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -205,6 +206,17 @@ impl TestApp {
             .unwrap()
             .error_for_status()
             .unwrap();
+    }
+
+    /// Consume all enqueued tasks
+    pub async fn dispatch_all_pending_emails(&self, db_pool: &PgPool) {
+        loop {
+            if let ExecutionResult::EmptyQueue =
+                try_execute_task(db_pool, &self.email_client).await.unwrap()
+            {
+                break;
+            }
+        }
     }
 
     /// POST to the newsletters endpoint

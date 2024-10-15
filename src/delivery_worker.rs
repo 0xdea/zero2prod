@@ -47,7 +47,7 @@ impl DeliveryWorker {
 }
 
 /// Execution result
-enum ExecutionResult {
+pub enum ExecutionResult {
     TaskCompleted,
     EmptyQueue,
 }
@@ -78,7 +78,7 @@ async fn worker_loop(db_pool: PgPool, email_client: EmailClient) -> anyhow::Resu
     ),
     err
 )]
-async fn try_execute_task(
+pub async fn try_execute_task(
     db_pool: &PgPool,
     email_client: &EmailClient,
 ) -> anyhow::Result<ExecutionResult> {

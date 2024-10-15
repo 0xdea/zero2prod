@@ -7,7 +7,7 @@ pub struct IdempotencyKey(String);
 
 impl IdempotencyKey {
     /// Generate idempotency key
-    /// TODO: update when we are ready with the backend implementation
+    // TODO: design an expiry mechanism for idempotency keys
     pub fn generate() -> Self {
         Self(Uuid::new_v4().into())
     }
