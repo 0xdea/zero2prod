@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use sqlx::{Executor, PgPool};
 use tracing::field::display;
 use tracing::Span;
@@ -7,11 +9,23 @@ use crate::email_client::EmailClient;
 use crate::routes::NewsletterIssueId;
 use crate::utils::PgTransaction;
 
-/// Newsletter issue
-struct NewsletterIssue {
-    title: String,
-    content_html: String,
-    content_text: String,
+/// Execution result
+enum ExecutionResult {
+    TaskCompleted,
+    EmptyQueue,
+}
+
+/// Issue delivery worker loop
+// TODO: refine the implementation to distinguish between transient and fatal failures (e.g., invalid subscriber email)
+// TODO: improve the delay strategy by introducing exponential backoff with jitter
+async fn worker_loop(db_pool: &PgPool, email_client: EmailClient) -> anyhow::Result<()> {
+    loop {
+        match try_execute_task(db_pool, &email_client).await {
+            Err(_) => tokio::time::sleep(Duration::from_secs(1)).await,
+            Ok(ExecutionResult::EmptyQueue) => tokio::time::sleep(Duration::from_secs(10)).await,
+            Ok(ExecutionResult::TaskCompleted) => {}
+        }
+    }
 }
 
 /// Try executing a task in the newsletter issue delivery queue
@@ -23,49 +37,57 @@ struct NewsletterIssue {
     ),
     err
 )]
-async fn try_execute_task(db_pool: &PgPool, email_client: &EmailClient) -> anyhow::Result<()> {
+async fn try_execute_task(
+    db_pool: &PgPool,
+    email_client: &EmailClient,
+) -> anyhow::Result<ExecutionResult> {
+    // Fetch a task from the queue, with an early return if the queue is empty
+    let task = dequeue_task(db_pool).await?;
+    if task.is_none() {
+        return Ok(ExecutionResult::EmptyQueue);
+    }
+
     // Process a task in the newsletter issue delivery queue
-    if let Some((transaction, issue_id, email)) = dequeue_task(db_pool).await? {
-        Span::current()
-            .record("newsletter_issue_id", display(issue_id))
-            .record("subscriber_email", display(&email));
+    let (transaction, issue_id, email) = task.unwrap();
+    Span::current()
+        .record("newsletter_issue_id", display(issue_id))
+        .record("subscriber_email", display(&email));
 
-        match EmailAddress::parse(email.clone()) {
-            // Valid email address: try to send the newsletter issue
-            // TODO: implement a retry in case of a transient email delivery error
-            Ok(email) => {
-                let issue = get_issue(db_pool, issue_id).await?;
-                if let Err(e) = email_client
-                    .send_email(
-                        &email,
-                        &issue.title,
-                        &issue.content_html,
-                        &issue.content_text,
-                    )
-                    .await
-                {
-                    tracing::error!(
-                    error.cause_chain = ?e,
-                    error.message = %e,
-                    "Failed to deliver issue to confirmed subscriber {}", email
-                    );
-                }
-            }
-
-            // Invalid email address: skip this particular subscriber
-            Err(e) => {
+    match EmailAddress::parse(email.clone()) {
+        // Valid email address: try to send the newsletter issue
+        // TODO: implement a retry in case of a transient email delivery error
+        Ok(email) => {
+            let issue = get_issue(db_pool, issue_id).await?;
+            if let Err(e) = email_client
+                .send_email(
+                    &email,
+                    &issue.title,
+                    &issue.content_html,
+                    &issue.content_text,
+                )
+                .await
+            {
                 tracing::error!(
-                    error.cause_chain = ?e,
-                    error.message = %e,
-                    "Skipping a confirmed subscriber because their stored contact details are invalid"
+                error.cause_chain = ?e,
+                error.message = %e,
+                "Failed to deliver issue to confirmed subscriber {}", email
                 );
             }
         }
 
-        // Remove the task from the queue
-        delete_task(transaction, issue_id, &email).await?;
+        // Invalid email address: skip this particular subscriber
+        Err(e) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "Skipping a confirmed subscriber because their stored contact details are invalid"
+            );
+        }
     }
-    Ok(())
+
+    // Remove the task from the queue and return success
+    delete_task(transaction, issue_id, &email).await?;
+    Ok(ExecutionResult::TaskCompleted)
 }
 
 /// Fetch a task from the newsletter issue delivery queue
@@ -121,6 +143,13 @@ async fn delete_task(
         .await?;
     transaction.commit().await?;
     Ok(())
+}
+
+/// Newsletter issue
+struct NewsletterIssue {
+    title: String,
+    content_html: String,
+    content_text: String,
 }
 
 /// Fetch the newsletter content
