@@ -1,7 +1,7 @@
 use std::time;
 
 use reqwest::Url;
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::{ExposeSecret, SecretString};
 
 use crate::domain::EmailAddress;
 
@@ -17,11 +17,12 @@ struct SendEmailRequest<'a> {
 }
 
 /// Email client data
+#[derive(Clone)]
 pub struct EmailClient {
     http_client: reqwest::Client,
     base_url: Url,
     sender: EmailAddress,
-    authorization_token: SecretBox<String>,
+    authorization_token: SecretString,
 }
 
 // TODO: Use a proper templating solution for our emails (e.g., tera)
@@ -30,7 +31,7 @@ impl EmailClient {
         timeout: time::Duration,
         base_url: Url,
         sender: EmailAddress,
-        authorization_token: SecretBox<String>,
+        authorization_token: SecretString,
     ) -> Self {
         let http_client = reqwest::Client::builder().timeout(timeout).build().unwrap();
         Self {
@@ -121,7 +122,7 @@ mod tests {
             time::Duration::from_millis(200),
             base_url,
             email(),
-            SecretBox::new(Password(32..33).fake()),
+            SecretString::from(Password(32..33).fake::<String>()),
         )
     }
 

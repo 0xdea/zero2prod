@@ -17,6 +17,7 @@ use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use zero2prod::authentication::UserId;
 use zero2prod::configuration::Settings;
+use zero2prod::email_client::EmailClient;
 use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -54,6 +55,7 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub test_user: TestUser,
     pub api_client: reqwest::Client,
+    pub email_client: EmailClient,
 }
 
 impl TestApp {
@@ -75,7 +77,7 @@ impl TestApp {
 
         // Get settings and modify them for testing
         let config = {
-            let mut c = Settings::get_config().expect("Failed to read configuration");
+            let mut c = Settings::get_config().expect("Failed to load configuration");
             // Listen on a random TCP port
             c.application.app_port = 0;
             // Use the mock server as email API
@@ -88,7 +90,7 @@ impl TestApp {
         test_user.store(db_pool).await;
 
         // Build the application and get its address
-        let app = Application::build_with_db_pool(config, db_pool)
+        let app = Application::build_with_db_pool(config.clone(), db_pool)
             .await
             .expect("Failed to build application");
         let port = app.port();
@@ -101,6 +103,9 @@ impl TestApp {
             .build()
             .unwrap();
 
+        // Build the email client
+        let email_client = config.email_client.client();
+
         // Run the application and return its data
         #[allow(clippy::let_underscore_future)]
         let _ = tokio::spawn(app.run_until_stopped());
@@ -110,6 +115,7 @@ impl TestApp {
             email_server,
             test_user,
             api_client,
+            email_client,
         }
     }
 

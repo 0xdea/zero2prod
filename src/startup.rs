@@ -8,7 +8,7 @@ use actix_web::middleware::from_fn;
 use actix_web::{web, App, HttpServer};
 use actix_web_flash_messages::storage::CookieMessageStore;
 use actix_web_flash_messages::FlashMessagesFramework;
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
@@ -26,7 +26,7 @@ pub struct ApplicationBaseUrl(pub String);
 
 /// HMAC secret
 /// TODO: change name?
-pub struct HmacSecret(pub SecretBox<String>);
+pub struct HmacSecret(pub SecretString);
 
 /// Application
 pub struct Application {
@@ -87,8 +87,8 @@ pub async fn run_server(
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
-    hmac_secret: SecretBox<String>,
-    redis_uri: SecretBox<String>,
+    hmac_secret: SecretString,
+    redis_uri: SecretString,
 ) -> anyhow::Result<Server> {
     // Extract secret key from HMAC secret
     let secret_key = Key::from(hmac_secret.expose_secret().as_bytes());

@@ -2,7 +2,7 @@ use std::{env, time};
 
 use config::{Config, ConfigError, Environment, File};
 use reqwest::Url;
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use sqlx::ConnectOptions;
 use tracing::log::LevelFilter;
@@ -12,12 +12,12 @@ use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
 
 /// Settings
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct Settings {
     pub application: ApplicationSettings,
     pub database: DatabaseSettings,
     pub email_client: EmailClientSettings,
-    pub redis_uri: SecretBox<String>,
+    pub redis_uri: SecretString,
 }
 
 impl Settings {
@@ -47,19 +47,19 @@ impl Settings {
 }
 
 /// Application settings
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct ApplicationSettings {
     pub app_host: String,
     pub app_port: u16,
     pub base_url: String,
-    pub hmac_secret: SecretBox<String>,
+    pub hmac_secret: SecretString,
 }
 
 /// Database settings
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct DatabaseSettings {
     username: String,
-    password: SecretBox<String>,
+    password: SecretString,
     host: String,
     port: u16,
     database: String,
@@ -86,11 +86,11 @@ impl DatabaseSettings {
 }
 
 /// Email client settings
-#[derive(serde::Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
-    pub authorization_token: SecretBox<String>,
+    pub authorization_token: SecretString,
     pub timeout_millis: u64,
 }
 

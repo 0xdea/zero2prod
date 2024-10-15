@@ -1,7 +1,7 @@
 use anyhow::Context;
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 
 use crate::authentication::UserId;
@@ -14,7 +14,7 @@ const FALLBACK_HASH: &str =
 /// Authentication credentials data
 pub struct Credentials {
     pub username: String,
-    pub password: SecretBox<String>,
+    pub password: SecretString,
 }
 
 /// Authentication error type
@@ -31,7 +31,7 @@ pub enum AuthError {
 pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<UserId, AuthError> {
     // Fallback `user_id` and password hash to prevent timing attacks
     let mut user_id = None;
-    let mut expected_password_hash = SecretBox::new(Box::new(FALLBACK_HASH.to_string()));
+    let mut expected_password_hash = SecretString::from(FALLBACK_HASH);
 
     // Extract stored authentication credentials for the provided username
     if let Some((stored_user_id, stored_password_hash)) =
@@ -57,7 +57,7 @@ pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<User
 async fn get_stored_creds(
     username: &str,
     db_pool: &PgPool,
-) -> anyhow::Result<Option<(UserId, SecretBox<String>)>> {
+) -> anyhow::Result<Option<(UserId, SecretString)>> {
     let row = sqlx::query!(
         r#"
         SELECT user_id, password_hash
@@ -69,12 +69,7 @@ async fn get_stored_creds(
     .fetch_optional(db_pool)
     .await
     .context("Failed to perform a query to validate auth credentials")?
-    .map(|r| {
-        (
-            UserId::new(r.user_id),
-            SecretBox::new(Box::new(r.password_hash)),
-        )
-    });
+    .map(|r| (UserId::new(r.user_id), SecretString::from(r.password_hash)));
 
     Ok(row)
 }
@@ -82,8 +77,8 @@ async fn get_stored_creds(
 /// Compare computed and stored password hashes
 #[tracing::instrument(name = "Verify password hash", skip_all)]
 async fn verify_password_hash(
-    password_hash: SecretBox<String>,
-    password: SecretBox<String>,
+    password_hash: SecretString,
+    password: SecretString,
 ) -> Result<(), AuthError> {
     // Parse stored password hash from PHC string format
     let password_hash =
@@ -100,7 +95,7 @@ async fn verify_password_hash(
 #[tracing::instrument(name = "Change password", skip(password, db_pool))]
 pub async fn change_password(
     user_id: UserId,
-    password: SecretBox<String>,
+    password: SecretString,
     db_pool: &PgPool,
 ) -> anyhow::Result<()> {
     let password_hash = spawn_blocking_with_tracing(move || compute_password_hash(&password))
@@ -124,7 +119,7 @@ pub async fn change_password(
 }
 
 /// Compute a password hash based on the provided password
-fn compute_password_hash(password: &SecretBox<String>) -> anyhow::Result<SecretBox<String>> {
+fn compute_password_hash(password: &SecretString) -> anyhow::Result<SecretString> {
     let salt = SaltString::generate(&mut rand::thread_rng());
     let password_hash = Argon2::new(
         Algorithm::Argon2id,
@@ -134,5 +129,5 @@ fn compute_password_hash(password: &SecretBox<String>) -> anyhow::Result<SecretB
     .hash_password(password.expose_secret().as_bytes(), &salt)?
     .to_string();
 
-    Ok(SecretBox::new(Box::new(password_hash)))
+    Ok(SecretString::from(password_hash))
 }

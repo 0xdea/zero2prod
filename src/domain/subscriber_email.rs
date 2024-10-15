@@ -3,7 +3,7 @@ use std::fmt;
 use validator::ValidateEmail;
 
 /// Email address
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EmailAddress(String);
 
 impl EmailAddress {
@@ -58,7 +58,7 @@ mod tests {
         assert_err!(EmailAddress::parse(email));
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Clone, Debug)]
     struct ValidEmail(String);
 
     impl Arbitrary for ValidEmail {

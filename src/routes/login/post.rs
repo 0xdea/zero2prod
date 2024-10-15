@@ -3,7 +3,7 @@ use std::fmt;
 use actix_web::error::InternalError;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
-use secrecy::SecretBox;
+use secrecy::SecretString;
 use sqlx::PgPool;
 
 use crate::authentication::{validate_creds, AuthError, Credentials};
@@ -14,7 +14,7 @@ use crate::utils::{e303_see_other, error_chain_fmt};
 #[derive(serde::Deserialize)]
 pub struct FormData {
     username: String,
-    password: SecretBox<String>,
+    password: SecretString,
 }
 
 /// Login error

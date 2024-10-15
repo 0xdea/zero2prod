@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
 /// Idempotency key
-#[derive(serde::Serialize, Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct IdempotencyKey(String);
 
 impl IdempotencyKey {

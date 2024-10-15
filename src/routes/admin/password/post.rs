@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 
 use crate::authentication::{change_password, validate_creds, AuthError, Credentials, UserId};
@@ -9,9 +9,9 @@ use crate::utils::{e303_see_other, e500_internal_server_error, get_username};
 /// Web form
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    old_password: SecretBox<String>,
-    new_password: SecretBox<String>,
-    new_password2: SecretBox<String>,
+    old_password: SecretString,
+    new_password: SecretString,
+    new_password2: SecretString,
 }
 
 /// Admin password POST handler
