@@ -1,4 +1,7 @@
+use std::fmt::{Debug, Display};
 use std::io;
+
+use tokio::task::JoinError;
 
 use zero2prod::configuration::Settings;
 use zero2prod::delivery_worker::DeliveryWorker;
@@ -20,11 +23,39 @@ async fn main() -> anyhow::Result<()> {
     let task_app = tokio::spawn(Application::build(config_app).await?.run_until_stopped());
     let task_wrk = tokio::spawn(DeliveryWorker::build(config_wrk)?.run_until_stopped());
 
-    // Run both tasks concurrently, returning as soon as one of the tasks completes or errors out
+    // Run both tasks concurrently
     tokio::select! {
-        _ = task_app => {},
-        _ = task_wrk => {},
+        o = task_app => report_exit("Application", o),
+        o = task_wrk => report_exit("Delivery Worker", o),
     }
 
     Ok(())
+}
+
+/// Report info or error on task exit
+fn report_exit(task_name: &str, outcome: Result<Result<(), impl Debug + Display>, JoinError>) {
+    match outcome {
+        // Task exited
+        Ok(Ok(())) => {
+            tracing::info!("{task_name} has exited");
+        }
+
+        // Task failed
+        Ok(Err(e)) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "{task_name} failed"
+            );
+        }
+
+        // Task failed to complete
+        Err(e) => {
+            tracing::error!(
+                error.cause_chain = ?e,
+                error.message = %e,
+                "{task_name} failed to complete"
+            );
+        }
+    }
 }
