@@ -11,29 +11,49 @@ use crate::email_client::EmailClient;
 use crate::routes::NewsletterIssueId;
 use crate::utils::PgTransaction;
 
-/// Run the newsletter issue delivery worker until it is stopped
-// TODO: optimize repeated code in `Application::build` and `Application::build_with_db_pool`
-pub async fn run_worker_until_stopped(config: Settings) -> anyhow::Result<()> {
-    // Connect to the database
-    let db_pool = PgPoolOptions::new()
-        .acquire_timeout(time::Duration::from_secs(2))
-        .connect_lazy_with(config.database.db_options());
+/// Delivery worker
+pub struct DeliveryWorker {
+    db_pool: PgPool,
+    email_client: EmailClient,
+}
 
-    // Build an email client
-    let base_url = config.email_client.base_url().expect("Invalid base URL");
-    let sender_email = config
-        .email_client
-        .sender_email()
-        .expect("Invalid sender email address");
-    let email_client = EmailClient::new(
-        config.email_client.timeout(),
-        base_url,
-        sender_email,
-        config.email_client.authorization_token,
-    );
+impl DeliveryWorker {
+    /// Build a worker based on settings
+    pub fn build(config: Settings) -> anyhow::Result<Self> {
+        // Connect to the database
+        let db_pool = PgPoolOptions::new()
+            .acquire_timeout(time::Duration::from_secs(2))
+            .connect_lazy_with(config.database.db_options());
 
-    // Start the worker loop
-    worker_loop(db_pool, email_client).await
+        // Build the worker
+        Self::build_with_db_pool(config, &db_pool)
+    }
+
+    /// Build a worker based on settings and database pool
+    pub fn build_with_db_pool(config: Settings, db_pool: &PgPool) -> anyhow::Result<Self> {
+        // Build an email client
+        let base_url = config.email_client.base_url().expect("Invalid base URL");
+        let sender_email = config
+            .email_client
+            .sender_email()
+            .expect("Invalid sender email address");
+        let email_client = EmailClient::new(
+            config.email_client.timeout(),
+            base_url,
+            sender_email,
+            config.email_client.authorization_token,
+        );
+
+        Ok(Self {
+            db_pool: db_pool.clone(),
+            email_client,
+        })
+    }
+
+    /// Run the newsletter issue delivery worker until it is stopped
+    pub async fn run_until_stopped(self) -> anyhow::Result<()> {
+        worker_loop(self.db_pool, self.email_client).await
+    }
 }
 
 /// Execution result
