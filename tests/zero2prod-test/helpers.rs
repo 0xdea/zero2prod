@@ -211,9 +211,10 @@ impl TestApp {
     /// Consume all enqueued tasks
     pub async fn dispatch_all_pending_emails(&self, db_pool: &PgPool) {
         loop {
-            if let ExecutionResult::EmptyQueue =
-                try_execute_task(db_pool, &self.email_client).await.unwrap()
-            {
+            if matches!(
+                try_execute_task(db_pool, &self.email_client).await.unwrap(),
+                ExecutionResult::EmptyQueue
+            ) {
                 break;
             }
         }
