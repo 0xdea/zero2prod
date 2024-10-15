@@ -28,10 +28,10 @@ pub struct EmailClient {
 // TODO: Use a proper templating solution for our emails (e.g., tera)
 impl EmailClient {
     pub fn new(
-        timeout: time::Duration,
         base_url: Url,
         sender: EmailAddress,
         authorization_token: SecretString,
+        timeout: time::Duration,
     ) -> Self {
         let http_client = reqwest::Client::builder().timeout(timeout).build().unwrap();
         Self {
@@ -119,10 +119,10 @@ mod tests {
     /// Get a test instance of email client
     fn email_client(base_url: Url) -> EmailClient {
         EmailClient::new(
-            time::Duration::from_millis(200),
             base_url,
             email(),
             SecretString::from(Password(32..33).fake::<String>()),
+            time::Duration::from_millis(200),
         )
     }
 

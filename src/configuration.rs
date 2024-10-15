@@ -100,10 +100,10 @@ impl EmailClientSettings {
         let base_url = self.base_url().expect("Invalid base URL");
         let sender_email = self.sender_email().expect("Invalid sender email address");
         EmailClient::new(
-            self.timeout(),
             base_url,
             sender_email,
-            self.authorization_token,
+            self.authorization_token.clone(),
+            self.timeout(),
         )
     }
 
