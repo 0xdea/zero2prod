@@ -1,13 +1,40 @@
-use std::time::Duration;
+use std::time;
 
+use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgPool};
 use tracing::field::display;
 use tracing::Span;
 
+use crate::configuration::Settings;
 use crate::domain::EmailAddress;
 use crate::email_client::EmailClient;
 use crate::routes::NewsletterIssueId;
 use crate::utils::PgTransaction;
+
+/// Run the newsletter issue delivery worker until it is stopped
+// TODO: optimize repeated code in `Application::build` and `Application::build_with_db_pool`
+pub async fn run_worker_until_stopped(config: Settings) -> anyhow::Result<()> {
+    // Connect to the database
+    let db_pool = PgPoolOptions::new()
+        .acquire_timeout(time::Duration::from_secs(2))
+        .connect_lazy_with(config.database.db_options());
+
+    // Build an email client
+    let base_url = config.email_client.base_url().expect("Invalid base URL");
+    let sender_email = config
+        .email_client
+        .sender_email()
+        .expect("Invalid sender email address");
+    let email_client = EmailClient::new(
+        config.email_client.timeout(),
+        base_url,
+        sender_email,
+        config.email_client.authorization_token,
+    );
+
+    // Start the worker loop
+    worker_loop(db_pool, email_client).await
+}
 
 /// Execution result
 enum ExecutionResult {
@@ -18,11 +45,15 @@ enum ExecutionResult {
 /// Issue delivery worker loop
 // TODO: refine the implementation to distinguish between transient and fatal failures (e.g., invalid subscriber email)
 // TODO: improve the delay strategy by introducing exponential backoff with jitter
-async fn worker_loop(db_pool: &PgPool, email_client: EmailClient) -> anyhow::Result<()> {
+async fn worker_loop(db_pool: PgPool, email_client: EmailClient) -> anyhow::Result<()> {
     loop {
-        match try_execute_task(db_pool, &email_client).await {
-            Err(_) => tokio::time::sleep(Duration::from_secs(1)).await,
-            Ok(ExecutionResult::EmptyQueue) => tokio::time::sleep(Duration::from_secs(10)).await,
+        match try_execute_task(&db_pool, &email_client).await {
+            Err(_) => {
+                tokio::time::sleep(time::Duration::from_secs(1)).await;
+            }
+            Ok(ExecutionResult::EmptyQueue) => {
+                tokio::time::sleep(time::Duration::from_secs(10)).await;
+            }
             Ok(ExecutionResult::TaskCompleted) => {}
         }
     }
