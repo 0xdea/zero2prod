@@ -89,6 +89,7 @@ pub async fn try_execute_task(
     }
 
     // Process a task in the newsletter issue delivery queue
+    // TODO: Implement better error handling instead of the `unwrap()` call
     let (transaction, issue_id, email) = task.unwrap();
     Span::current()
         .record("newsletter_issue_id", display(issue_id))
