@@ -14,4 +14,3 @@ jobs:
       - uses: taiki-e/install-action@cargo-deny
       - name: Scan for vulnerabilities
         run: cargo deny check advisories
-        

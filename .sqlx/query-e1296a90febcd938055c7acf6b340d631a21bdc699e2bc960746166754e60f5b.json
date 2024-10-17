@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        ALTER TABLE subscriptions\n        DROP COLUMN email;\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e1296a90febcd938055c7acf6b340d631a21bdc699e2bc960746166754e60f5b"
+}
