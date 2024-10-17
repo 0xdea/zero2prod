@@ -1,16 +1,13 @@
 name: Rust
 
 on:
-  # NB: this differs from the book's project!
-  # These settings allow us to run this specific CI pipeline for PRs against
-  # this specific branch (a.k.a. book chapter).
   push:
     branches:
-      - main
+      - master
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
     branches:
-      - main
+      - master
 
 env:
   CARGO_TERM_COLOR: always
@@ -24,11 +21,9 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    # Service containers to run alongside the `test` container job
     services:
       postgres:
-        # Docker Hub image
-        image: postgres:14
+        image: postgres:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -36,22 +31,14 @@ jobs:
         ports:
           - 5432:5432
       redis:
-        image: redis:7
+        image: redis:latest
         ports:
           - 6379:6379
     steps:
-      # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
-        # The uses keyword specifies that this step will run v4 of the actions/checkout action.
-        # This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools).
-        # You should use the checkout action any time your workflow will run against the repository's code.
         uses: actions/checkout@v4
-
-      # This GitHub Action installs a Rust toolchain using rustup. It is designed for one-line concise usage and good defaults.
-      # It also takes care of caching intermediate build artifacts.
       - name: Install the Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
-
       - name: Install sqlx-cli
         run:
           cargo install sqlx-cli
@@ -59,10 +46,6 @@ jobs:
           --features ${{ env.SQLX_FEATURES }}
           --no-default-features
           --locked
-          # The --locked flag can be used to force Cargo to use the packaged Cargo.lock file if it is available.
-          # This may be useful for ensuring reproducible builds, to use the exact same set of dependencies that were available when the package was published.
-          # It may also be useful if a newer version of a dependency is published that no longer builds on your system, or has other problems
-
       - name: Create app user in Postgres
         run: |
           sudo apt-get install postgresql-client
@@ -78,14 +61,11 @@ jobs:
       - name: Migrate database
         run: |
           SKIP_DOCKER=true ./scripts/init_db.sh
-
       - name: Run tests
         run: cargo test
-
       - name: Check that queries are fresh
         run: cargo sqlx prepare --workspace --check -- --all-targets
 
-  # `fmt` container job
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -117,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:14
+        image: postgres:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -125,7 +105,7 @@ jobs:
         ports:
           - 5432:5432
       redis:
-        image: redis:7
+        image: redis:latest
         ports:
           - 6379:6379
     steps:
@@ -163,4 +143,3 @@ jobs:
         with:
           name: "Coverage report"
           path: coverage/
-          
