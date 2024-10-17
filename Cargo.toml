@@ -42,7 +42,7 @@ default-features = false
 features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "migrate"]
 
 [dev-dependencies]
-claim = "0.5"
+claims = "0.7"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 wiremock = "0.6"
