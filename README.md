@@ -16,7 +16,7 @@ My code for "Zero To Production In Rust", a book by [Luca Palmieri](https://gith
 development using Rust.
 
 Blog post:  
-https://security.humanativaspa.it/an-offensive-rust-encore
+https://hnsecurity.it/blog/an-offensive-rust-encore
 
 See also:  
 https://www.zero2prod.com  
