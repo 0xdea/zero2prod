@@ -5,6 +5,7 @@
 [![](https://img.shields.io/github/watchers/0xdea/zero2prod.svg?style=flat&color=red)](https://github.com/0xdea/zero2prod)
 [![](https://img.shields.io/badge/twitter-%400xdea-blue.svg)](https://twitter.com/0xdea)
 [![](https://img.shields.io/badge/mastodon-%40raptor-purple.svg)](https://infosec.exchange/@raptor)
+[![checks](https://github.com/0xdea/zero2prod/actions/workflows/general.yml/badge.svg)](https://github.com/0xdea/rhabdomancer/actions/workflows/general.yml)
 
 > "Give me alchemy, give me wizardry, give me sorcery, thermatology,  
 > Electricity, magic if you please, master all of these, bring him to his knees,  
