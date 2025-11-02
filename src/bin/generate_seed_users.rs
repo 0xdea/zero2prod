@@ -78,7 +78,7 @@ fn main() {
         _ => {
             usage(&args[0]);
         }
-    };
+    }
 }
 
 /// Print usage information and exit
