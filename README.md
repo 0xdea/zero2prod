@@ -15,9 +15,11 @@
 My code for "Zero To Production In Rust", a book by [Luca Palmieri](https://github.com/LukeMathWalker) on API
 development using Rust.
 
-Blog post:  
-https://hnsecurity.it/blog/an-offensive-rust-encore
+## Blog post
 
-See also:  
-https://www.zero2prod.com  
-https://github.com/LukeMathWalker/zero-to-production  
+* <https://hnsecurity.it/blog/an-offensive-rust-encore>
+
+## See also
+
+* <https://www.zero2prod.com>
+* <https://github.com/LukeMathWalker/zero-to-production>
