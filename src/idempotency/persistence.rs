@@ -53,6 +53,7 @@ pub async fn get_saved_response(
 }
 
 /// Next action
+#[allow(clippy::large_enum_variant)]
 pub enum NextAction {
     StartProcessing(PgTransaction),
     ReturnSavedResponse(HttpResponse),

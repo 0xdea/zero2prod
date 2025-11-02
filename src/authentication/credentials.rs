@@ -28,6 +28,7 @@ pub enum AuthError {
 
 /// Validate provided authentication credentials and return `user_id` if they are valid
 #[tracing::instrument(name = "Validate credentials", skip_all)]
+#[allow(clippy::useless_let_if_seq)]
 pub async fn validate_creds(creds: Credentials, db_pool: &PgPool) -> Result<UserId, AuthError> {
     // Fallback `user_id` and password hash to prevent timing attacks
     let mut user_id = None;
